@@ -30,7 +30,8 @@ def gen_var(variable, size, min, max, generator):
     dim = [int(x) for x in re.findall(r'\d+', size)]
     num = np.prod(dim)
     val = ','.join(map(str, generator.integers(min, max, size=num)))
-    var = f'int32_t {variable}_flat[{num}] = {{ {val} }};\n'
+    var = f'#include <inttypes.h>\n'
+    var += f'int32_t {variable}_flat[{num}] = {{ {val} }};\n'
     var += f'int32_t (*{variable})'
     for i in dim[1:]:
         var += f'[{i}]'
@@ -38,6 +39,7 @@ def gen_var(variable, size, min, max, generator):
     for i in dim[1:]:
         var += f'[{i}]'
     var += f'){variable}_flat;\n'
+    var += f'uint32_t const {variable}_len = {num};\n'
     return var
 
 
