@@ -37,11 +37,7 @@ int32_t c[NUM_CORES] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 int32_t reduced_group[4] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
-int32_t partial[4 * NUM_CORES] __attribute__((section(".l1")))
-__attribute__((aligned(NUM_CORES * 4 * 4)));
 int32_t reduced16[16] __attribute__((section(".l1")))
-__attribute__((aligned(NUM_CORES * 4 * 4)));
-int32_t reduced4[4] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 
 // Initialize the matrices in parallel
@@ -332,23 +328,23 @@ int main() {
   mempool_barrier(num_cores);
   int32_t result, correct_result;
 
-//   if (core_id == 0) {
-//     mempool_wait(4 * num_cores);
-//     cycles = mempool_get_timer();
-//     mempool_start_benchmark();
-//     result = reduce_sum_sequential(a, M);
-//     mempool_stop_benchmark();
-//     cycles = mempool_get_timer() - cycles;
-//   }
+  if (core_id == 0) {
+    mempool_wait(4 * num_cores);
+    cycles = mempool_get_timer();
+    mempool_start_benchmark();
+    result = reduce_sum_sequential(a, M);
+    mempool_stop_benchmark();
+    cycles = mempool_get_timer() - cycles;
+  }
 
-// #ifdef VERBOSE
-//   mempool_barrier(num_cores);
-//   if (core_id == 0) {
-//     printf("Sequential Result: %d\n", result);
-//     printf("Sequential Duration: %d\n", cycles);
-//   }
-// #endif
-//   mempool_barrier(num_cores);
+#ifdef VERBOSE
+  mempool_barrier(num_cores);
+  if (core_id == 0) {
+    printf("Sequential Result: %d\n", result);
+    printf("Sequential Duration: %d\n", cycles);
+  }
+#endif
+  mempool_barrier(num_cores);
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
@@ -410,21 +406,6 @@ int main() {
 #endif
   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel5(a, c, M, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
-
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel5 Result: %d\n", result);
-    printf("Manual Parallel5 Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
-
   /*  OPENMP IMPLEMENTATION  */
   int32_t omp_result;
 
@@ -442,16 +423,16 @@ int main() {
 
     mempool_wait(4 * num_cores);
 
-    cycles = mempool_get_timer();
-    mempool_start_benchmark();
-    omp_result = reduce_sum_omp_dynamic(a, IS);
-    mempool_stop_benchmark();
-    cycles = mempool_get_timer() - cycles;
+    // cycles = mempool_get_timer();
+    // mempool_start_benchmark();
+    // omp_result = reduce_sum_omp_dynamic(a, IS);
+    // mempool_stop_benchmark();
+    // cycles = mempool_get_timer() - cycles;
 
-    printf("OMP Dynamic(%d) Result: %d\n", IS, omp_result);
-    printf("OMP Dynamic(%d) Duration: %d\n", IS, cycles);
+    // printf("OMP Dynamic(%d) Result: %d\n", IS, omp_result);
+    // printf("OMP Dynamic(%d) Duration: %d\n", IS, cycles);
 
-    mempool_wait(4 * num_cores);
+    // mempool_wait(4 * num_cores);
 
     // cycles = mempool_get_timer();
     // mempool_start_benchmark();
