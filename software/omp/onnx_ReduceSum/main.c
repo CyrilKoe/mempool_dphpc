@@ -222,21 +222,125 @@ int32_t reduce_sum_parallel5(int32_t const *__restrict__ A,
     }
   }
   mempool_barrier(numThreads);
-  for (uint32_t i = 0; i < 16; i += 1) {
-    if (id == i*4) {
-      reduced16[i] = 0;
-      for (uint32_t j = 4*id; j < 4*id+16; j += 1) {
-        reduced16[i] += Partial_sums[j];
-      }
+  if (id == 0) {
+    reduced16[0] = 0;
+    for (uint32_t j = 0; j < 16; j += 1) {
+      reduced16[0] += Partial_sums[j];
+    }
+  }
+  if (id == 4) {
+    reduced16[1] = 0;
+    for (uint32_t j = 16; j < 32; j += 1) {
+      reduced16[1] += Partial_sums[j];
+    }
+  }
+  if (id == 8) {
+    reduced16[2] = 0;
+    for (uint32_t j = 32; j < 48; j += 1) {
+      reduced16[2] += Partial_sums[j];
+    }
+  }
+  if (id == 12) {
+    reduced16[3] = 0;
+    for (uint32_t j = 48; j < 64; j += 1) {
+      reduced16[3] += Partial_sums[j];
+    }
+  }
+  if (id == 16) {
+    reduced16[4] = 0;
+    for (uint32_t j = 64; j < 80; j += 1) {
+      reduced16[4] += Partial_sums[j];
+    }
+  }
+  if (id == 20) {
+    reduced16[5] = 0;
+    for (uint32_t j = 80; j < 96; j += 1) {
+      reduced16[5] += Partial_sums[j];
+    }
+  }
+  if (id == 24) {
+    reduced16[6] = 0;
+    for (uint32_t j = 96; j < 112; j += 1) {
+      reduced16[6] += Partial_sums[j];
+    }
+  }
+  if (id == 28) {
+    reduced16[7] = 0;
+    for (uint32_t j = 112; j < 128; j += 1) {
+      reduced16[7] += Partial_sums[j];
+    }
+  }
+  if (id == 32) {
+    reduced16[8] = 0;
+    for (uint32_t j = 128; j < 144; j += 1) {
+      reduced16[8] += Partial_sums[j];
+    }
+  }
+  if (id == 36) {
+    reduced16[9] = 0;
+    for (uint32_t j = 144; j < 160; j += 1) {
+      reduced16[9] += Partial_sums[j];
+    }
+  }
+  if (id == 40) {
+    reduced16[10] = 0;
+    for (uint32_t j = 160; j < 176; j += 1) {
+      reduced16[10] += Partial_sums[j];
+    }
+  }
+  if (id == 44) {
+    reduced16[11] = 0;
+    for (uint32_t j = 176; j < 192; j += 1) {
+      reduced16[11] += Partial_sums[j];
+    }
+  }
+  if (id == 48) {
+    reduced16[12] = 0;
+    for (uint32_t j = 192; j < 208; j += 1) {
+      reduced16[12] += Partial_sums[j];
+    }
+  }
+  if (id == 52) {
+    reduced16[13] = 0;
+    for (uint32_t j = 208; j < 224; j += 1) {
+      reduced16[13] += Partial_sums[j];
+    }
+  }
+  if (id == 56) {
+    reduced16[14] = 0;
+    for (uint32_t j = 224; j < 240; j += 1) {
+      reduced16[14] += Partial_sums[j];
+    }
+  }
+  if (id == 60) {
+    reduced16[15] = 0;
+    for (uint32_t j = 240; j < 256; j += 1) {
+      reduced16[15] += Partial_sums[j];
     }
   }
   mempool_barrier(numThreads);
-  for (uint32_t i = 0; i < 4; i += 1) {
-    if (id == i*4) {
-      reduced4[i] = 0;
-      for (uint32_t j = id; j < id+4; j += 1) {
-        reduced4[i] += reduced16[j];
-      }
+  if (id == 0) {
+    reduced4[0] = 0;
+    for (uint32_t j = 0; j < 4; j += 1) {
+      reduced4[0] += reduced16[j];
+    }
+  }
+  if (id == 1) {
+    reduced4[1] = 0;
+    for (uint32_t j = 4; j < 8; j += 1) {
+      reduced4[1] += reduced16[j];
+    }
+  }
+  if (id == 2) {
+    reduced4[2] = 0;
+    for (uint32_t j = 8; j < 12; j += 1) {
+      reduced4[2] += reduced16[j];
+    }
+  }
+  if (id == 3) {
+    reduced4[3] = 0;
+    for (uint32_t j = 12; j < 16; j += 1) {
+      reduced4[3] += reduced16[j];
     }
   }
   mempool_barrier(numThreads);
@@ -374,6 +478,21 @@ int main() {
   if (core_id == 0) {
     printf("Manual Parallel4 Result: %d\n", result);
     printf("Manual Parallel4 Duration: %d\n", cycles);
+  }
+#endif
+  mempool_barrier(num_cores);
+
+  cycles = mempool_get_timer();
+  mempool_start_benchmark();
+  result = reduce_sum_parallel5(a, c, M, core_id, num_cores);
+  mempool_stop_benchmark();
+  cycles = mempool_get_timer() - cycles;
+
+#ifdef VERBOSE
+  mempool_barrier(num_cores);
+  if (core_id == 0) {
+    printf("Manual Parallel5 Result: %d\n", result);
+    printf("Manual Parallel5 Duration: %d\n", cycles);
   }
 #endif
   mempool_barrier(num_cores);
