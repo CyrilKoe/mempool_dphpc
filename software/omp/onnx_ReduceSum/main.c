@@ -134,53 +134,6 @@ int32_t reduce_sum_parallel3(int32_t const *__restrict__ A,
       reduced_group[0] += Partial_sums[i];
     }
   }
-  if (id == 64) {
-    reduced_group[1] = 0;
-    for (uint32_t i = id; i < 128; i += 1) {
-      reduced_group[1] += Partial_sums[i];
-    }
-  }
-  if (id == 128) {
-    reduced_group[2] = 0;
-    for (uint32_t i = id; i < 192; i += 1) {
-      reduced_group[2] += Partial_sums[i];
-    }
-  }
-  if (id == 192) {
-    reduced_group[3] = 0;
-    for (uint32_t i = id; i < 256; i += 1) {
-      reduced_group[3] += Partial_sums[i];
-    }
-  }
-  mempool_barrier(numThreads);
-  if (id == 0) {
-    for (uint32_t i = 0; i < 4; i += 1) {
-      reduced += reduced_group[i];
-    }
-  }
-  mempool_barrier(numThreads);
-  return reduced;
-}
-
-int32_t reduce_sum_parallel4(int32_t const *__restrict__ A,
-                              int32_t *__restrict__ Partial_sums,
-                              uint32_t num_elements, uint32_t id,
-                              uint32_t numThreads) {
-
-  Partial_sums[id] = 0;
-  int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
-    for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
-    }
-  }
-  mempool_barrier(numThreads);
-  if (id == 0) {
-    reduced_group[0] = 0;
-    for (uint32_t i = id; i < 64; i += 1) {
-      reduced_group[0] += Partial_sums[i];
-    }
-  }
   if (id == 16) {
     reduced_group[1] = 0;
     for (uint32_t i = 64; i < 128; i += 1) {
@@ -209,7 +162,7 @@ int32_t reduce_sum_parallel4(int32_t const *__restrict__ A,
   return reduced;
 }
 
-int32_t reduce_sum_parallel5(int32_t const *__restrict__ A,
+int32_t reduce_sum_parallel4(int32_t const *__restrict__ A,
                               int32_t *__restrict__ Partial_sums,
                               uint32_t num_elements, uint32_t id,
                               uint32_t numThreads) {
