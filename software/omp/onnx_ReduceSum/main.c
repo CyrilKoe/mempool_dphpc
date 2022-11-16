@@ -33,7 +33,7 @@
 int32_t volatile init __attribute__((section(".l2"))) = 0;
 int32_t a[M] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
-int32_t c[NUM_CORES] __attribute__((section(".l1")))
+int32_t Partial_sums[NUM_CORES] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 int32_t reduced_group[4] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
@@ -68,7 +68,6 @@ int32_t reduce_sum_sequential(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_sum_parallel1(int32_t const *__restrict__ A,
-                              int32_t *__restrict__ Partial_sums,
                               uint32_t num_elements, uint32_t id,
                               uint32_t numThreads) {
 
@@ -91,7 +90,6 @@ int32_t reduce_sum_parallel1(int32_t const *__restrict__ A,
 
 // does not make sense to me since memory layout is not considered
 int32_t reduce_sum_parallel2(int32_t const *__restrict__ A,
-                              int32_t *__restrict__ Partial_sums,
                               uint32_t num_elements, uint32_t id,
                               uint32_t numThreads) {
 
@@ -112,7 +110,6 @@ int32_t reduce_sum_parallel2(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_sum_parallel3(int32_t const *__restrict__ A,
-                              int32_t *__restrict__ Partial_sums,
                               uint32_t num_elements, uint32_t id,
                               uint32_t numThreads) {
 
@@ -159,7 +156,6 @@ int32_t reduce_sum_parallel3(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_sum_parallel4(int32_t const *__restrict__ A,
-                              int32_t *__restrict__ Partial_sums,
                               uint32_t num_elements, uint32_t id,
                               uint32_t numThreads) {
 
@@ -348,7 +344,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel1(a, c, M, core_id, num_cores);
+  result = reduce_sum_parallel1(a, M, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -363,7 +359,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel2(a, c, M, core_id, num_cores);
+  result = reduce_sum_parallel2(a, M, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -378,7 +374,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel3(a, c, M, core_id, num_cores);
+  result = reduce_sum_parallel3(a, M, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -393,7 +389,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel4(a, c, M, core_id, num_cores);
+  result = reduce_sum_parallel4(a, M, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
