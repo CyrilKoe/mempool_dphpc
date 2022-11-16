@@ -320,33 +320,8 @@ int32_t reduce_sum_parallel5(int32_t const *__restrict__ A,
   }
   mempool_barrier(numThreads);
   if (id == 0) {
-    reduced4[0] = 0;
-    for (uint32_t j = 0; j < 4; j += 1) {
-      reduced4[0] += reduced16[j];
-    }
-  }
-  if (id == 1) {
-    reduced4[1] = 0;
-    for (uint32_t j = 4; j < 8; j += 1) {
-      reduced4[1] += reduced16[j];
-    }
-  }
-  if (id == 2) {
-    reduced4[2] = 0;
-    for (uint32_t j = 8; j < 12; j += 1) {
-      reduced4[2] += reduced16[j];
-    }
-  }
-  if (id == 3) {
-    reduced4[3] = 0;
-    for (uint32_t j = 12; j < 16; j += 1) {
-      reduced4[3] += reduced16[j];
-    }
-  }
-  mempool_barrier(numThreads);
-  if (id == 0) {
-    for (uint32_t i = 0; i < 4; i += 1) {
-      reduced += reduced4[i];
+    for (uint32_t i = 0; i < 16; i += 1) {
+      reduced += reduced16[i];
     }
   }
   mempool_barrier(numThreads);
