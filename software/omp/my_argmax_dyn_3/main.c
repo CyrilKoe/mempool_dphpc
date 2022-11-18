@@ -32,12 +32,15 @@ typedef struct index_list {
   struct index_list *next;
 } index_t; // sizeof(index_t) = 0x8
 
-uint32_t *print_lock;
+uint32_t print_lock __attribute__((section(".l1")));
 
 int32_t all_local_max[NUM_BANKS]
     __attribute__((aligned(NUM_BANKS), section(".l1")));
 index_t *all_local_indexes[NUM_BANKS]
     __attribute__((aligned(NUM_BANKS), section(".l1")));
+
+// This vector contains all the tile locks, it is randomly located in l1 but who
+// cares
 uint32_t *locks[NUM_CORES / NUM_CORES_PER_TILE];
 
 void free_all(alloc_t *tile_alloc, index_t *indexes) {
@@ -87,100 +90,127 @@ int main() {
     index_t *global_indexes = NULL;
     uint32_t global_indexes_len = 0;
 
-    print_lock = simple_malloc(sizeof(uint32_t));
-    *print_lock = 0;
+    print_lock = 0;
 
 #pragma omp parallel num_threads(NUM_CORES)
     {
+      // Utils
       uint32_t id = omp_get_thread_num();
-      uint32_t local_offset = 0;
       uint32_t tile_id = id / NUM_CORES_PER_TILE;
+      alloc_t *tile_alloc = get_alloc_tile(tile_id);
+      // This pointer (located in local stack) points the the tile_lock (located
+      // somewhere in the tile)
+      uint32_t *tile_lock = NULL;
+      // Local data vector
+      uint32_t local_offset = 0;
       uint32_t local_data_len = l2_data_len / omp_get_num_threads();
+      // Results
+      uint32_t local_indexes_len = 0;
       all_local_max[id * BANKING_FACTOR] = DEFAULT_MAX_VALUE;
       all_local_indexes[id * BANKING_FACTOR] = NULL;
-      uint32_t local_indexes_len = 0;
-      alloc_t *tile_alloc = get_alloc_tile(tile_id);
-      uint32_t *tile_lock = NULL;
 
-      // Initialize local vector of data within the tile
+      // Initialize the tile lock somewhere in the tile
+      if (id % NUM_CORES_PER_TILE == 0) {
+#pragma omp critical
+        {
+          locks[tile_id] =
+              (uint32_t *)domain_malloc(tile_alloc, sizeof(uint32_t));
+        }
+        *locks[tile_id] = 0;
+      }
+
+// Initialize your local pointer of the tile lock
+#pragma omp barrier
+      tile_lock = locks[tile_id];
+
+      // Initialize your local vector of data somewhere in the tile
+      lock_tile(tile_lock);
       int32_t *local_vector = (int32_t *)domain_malloc(
           tile_alloc, local_data_len * sizeof(int32_t));
-      if (!local_vector) {
-        *local_vector = 1;
-      }
+      unlock_tile(tile_lock);
+      if (!local_vector)
+        printf("ERROR\n");
+
+      // Fill your local vector of data
       uint32_t local_i = 0;
 #pragma omp for
       for (uint32_t i = 0; i < l2_data_len; ++i) {
         if (local_i == 0) {
+          // Keep your offset for later
           local_offset = i;
         }
         local_vector[local_i++] = l2_data_flat[i];
       }
 
+      // Start benchmark NOW
       if (id == 0) {
         printf("All cores are ready to start\n");
       }
 #pragma omp barrier
       mempool_start_benchmark();
 
-      // Initialize tile lock
-      if (id % NUM_CORES_PER_TILE == 0) {
-        locks[tile_id] =
-            (uint32_t *)domain_malloc(tile_alloc, sizeof(uint32_t));
-        *locks[tile_id] = 0;
-      }
-
-#pragma omp barrier
-
-      tile_lock = locks[tile_id];
-
       for (uint32_t i = 0; i < local_data_len; ++i) {
-
+        /* There's a better maximum */
         if (local_vector[i] > all_local_max[id * BANKING_FACTOR]) {
+          // Set your local max to him
           all_local_max[id * BANKING_FACTOR] = local_vector[i];
+
+          // Free your local index list and alloc a new one
           lock_tile(tile_lock);
           free_all(tile_alloc, all_local_indexes[id * BANKING_FACTOR]);
           all_local_indexes[id * BANKING_FACTOR] =
               (index_t *)domain_malloc(tile_alloc, sizeof(index_t));
           unlock_tile(tile_lock);
-          if (!all_local_indexes[id * BANKING_FACTOR]) {
-            *(int32_t *)all_local_indexes[id * BANKING_FACTOR] = 1;
-          }
+
+          if (!all_local_indexes[id * BANKING_FACTOR])
+            printf("ERROR\n");
+
+          // Save this new max's index
           all_local_indexes[id * BANKING_FACTOR]->idx = local_offset + i;
           all_local_indexes[id * BANKING_FACTOR]->next = NULL;
+
           local_indexes_len = 1;
+
+          /* Theres another time the same maximum */
         } else if (local_vector[i] == all_local_max[id * BANKING_FACTOR]) {
+
+          // Allocate a new entry for its index
           index_t *new_index;
           lock_tile(tile_lock);
           new_index = (index_t *)domain_malloc(tile_alloc, sizeof(index_t));
           unlock_tile(tile_lock);
-          if (!new_index) {
-            *(int32_t *)new_index = 1;
-          }
-          new_index->next = all_local_indexes[id * BANKING_FACTOR];
+          if (!new_index)
+            printf("ERROR\n");
+
+          // Save this new max's index
           new_index->idx = local_offset + i;
+          // Push this new max on the top of our result list
+          new_index->next = all_local_indexes[id * BANKING_FACTOR];
           all_local_indexes[id * BANKING_FACTOR] = new_index;
+
           local_indexes_len++;
         }
       }
 
-      // Barrier inside the log reduction
+      // No need for barrier here, its inside the log reduction
       mempool_log_reduction(2, id);
 
       mempool_stop_benchmark();
     }
 
+    // Get your results
     global_indexes = all_local_indexes[0];
     global_max = all_local_max[0];
 
+    // Get the result size
     global_indexes_len = 0;
-
     index_t *tmp = global_indexes;
     while (tmp) {
       global_indexes_len++;
       tmp = tmp->next;
     }
 
+    // Print all this
     printf("Global max = %i\n", global_max);
     printf("Global indexes len = %u\n", global_indexes_len);
     tmp = global_indexes;
@@ -190,7 +220,7 @@ int main() {
     }
     printf("\n");
 
-    // Todo save global_indexes and free all_global_indexes
+    // Todo save global_indexes and free all_global_indexes ?
 
 #if IS_MEMPOOL
   } else {
@@ -202,11 +232,12 @@ int main() {
 #endif
 }
 
+/* Logarithmic reduction */
 uint32_t volatile red_barrier[NUM_BANKS]
     __attribute__((aligned(NUM_BANKS), section(".l1")));
 
 void mempool_log_reduction(uint32_t volatile step, uint32_t core_id) {
-
+  // TODO : Comments
   uint32_t idx, step_idx = (step * (core_id / step)) * BANKING_FACTOR;
   uint32_t next_step, previous_step;
   register int32_t local_max;
@@ -237,7 +268,7 @@ void mempool_log_reduction(uint32_t volatile step, uint32_t core_id) {
     all_local_indexes[step_idx] = local_indexes;
 
 #if DEBUG
-    lock_tile(print_lock);
+    lock_tile(&print_lock);
     if (all_local_max[step_idx] == 99) {
       printf("%u, %u, %i, %u, %4x", step, step_idx, all_local_max[step_idx],
              all_local_indexes[step_idx]->idx, all_local_indexes[step_idx]);
@@ -248,7 +279,7 @@ void mempool_log_reduction(uint32_t volatile step, uint32_t core_id) {
       }
       printf("\n");
     }
-    unlock_tile(print_lock);
+    unlock_tile(&print_lock);
 #endif
 
     next_step = step << 1;
