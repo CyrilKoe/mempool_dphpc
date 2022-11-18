@@ -30,7 +30,18 @@ def gen_var(variable, size, min, max, generator):
     dim = [int(x) for x in re.findall(r'\d+', size)]
     num = np.prod(dim)
     val = ','.join(map(str, generator.integers(min, max, size=num)))
-    var = f'int32_t {variable}_flat[{num}] = {{ {val} }};\n'
+
+    argmax = []
+    max_val = int(min)
+    for idx, i in enumerate(val.split(',')):
+        if int(i) > max_val:
+            max_val = int(i)
+            argmax = [idx]
+        elif int(i) == max_val:
+            argmax.append(idx)
+    
+    var = f'#include <inttypes.h>\n'
+    var += f'int32_t {variable}_flat[{num}] = {{ {val} }};\n'
     var += f'int32_t (*{variable})'
     for i in dim[1:]:
         var += f'[{i}]'
@@ -38,6 +49,17 @@ def gen_var(variable, size, min, max, generator):
     for i in dim[1:]:
         var += f'[{i}]'
     var += f'){variable}_flat;\n'
+    var += f'uint32_t const {variable}_len = {num};\n'
+    var += f'//result_max = {max_val}\n// result_len = {len(argmax)} \n// result = {argmax}\n'
+    
+    offset = 0
+    core = 0
+    page = int(int(num) / 256)
+    while offset != num:
+        local_vector = [int(a) for a in val.split(',')[offset:offset+page]]
+        var += f'//core : {core} , offset : {offset}  = {str(local_vector)}\n'
+        offset += page
+        core += 1
     return var
 
 
