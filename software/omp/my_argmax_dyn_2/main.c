@@ -21,6 +21,8 @@
 #include "no_mempool.h"
 #endif
 
+uint32_t *locks[NUM_CORES / NUM_CORES_PER_TILE];
+
 typedef struct index_list {
   uint32_t idx;
   struct index_list *next;
@@ -34,17 +36,6 @@ void free_all(alloc_t *tile_alloc, index_t *indexes) {
     domain_free(tile_alloc, tmp);
     tmp = next_tmp;
   }
-}
-
-uint32_t *locks[NUM_CORES / NUM_CORES_PER_TILE];
-
-void print_indexes(index_t *indexes) {
-  index_t *tmp = indexes;
-  while (tmp) {
-    printf("%i ", tmp->idx);
-    tmp = tmp->next;
-  }
-  printf("\n");
 }
 
 void lock_tile(uint32_t *lock) {
@@ -61,14 +52,6 @@ void lock_tile(uint32_t *lock) {
 
 void unlock_tile(uint32_t *lock) {
   __atomic_fetch_and(lock, 0, __ATOMIC_SEQ_CST);
-}
-
-char is_in(uint32_t val, uint32_t const *arr, uint32_t len) {
-  for (uint32_t i = 0; i < len; i++) {
-    if (val == arr[i])
-      return 1;
-  }
-  return 0;
 }
 
 int main() {
@@ -96,36 +79,33 @@ int main() {
       uint32_t local_indexes_len = 0;
       alloc_t *tile_alloc = get_alloc_tile(tile_id);
       uint32_t *tile_lock = NULL;
-      uint32_t const results[] = {
-          16,   44,   153,  185,  893,  926,  1204, 1313, 1336, 1367, 1589,
-          1764, 1869, 1914, 2092, 2828, 2876, 2953, 2969, 3396, 3625, 3732,
-          4074, 4222, 4358, 4361, 4398, 4404, 4620, 4926, 5055, 5198, 5364,
-          5423, 5531, 5788, 5814, 6187, 6306, 6413, 6572, 6636, 6640, 6747,
-          6781, 6844, 6851, 6898, 7531, 7675, 7890};
+      int32_t *local_vector = NULL;
 
-      // Initialize local vector of data within the tile
-      int32_t *local_vector = (int32_t *)domain_malloc(
-          tile_alloc, local_data_len * sizeof(int32_t));
-      if (!local_vector) {
-        *local_vector = 1;
-      }
+// Initialize local vector of data within the tile
+#pragma omp critical
+      local_vector = (int32_t *)domain_malloc(tile_alloc,
+                                              local_data_len * sizeof(int32_t));
+      if (!local_vector)
+        printf("ERROR\n");
+
+      // Fill your local vector of data
       uint32_t local_i = 0;
-
 #pragma omp for
       for (uint32_t i = 0; i < l2_data_len; ++i) {
-        if (local_i == 0) {
+        if (local_i == 0)
           local_offset = i;
-        }
+
         local_vector[local_i++] = l2_data_flat[i];
       }
 
-      if (id == 0) {
+      if (id == 0)
         printf("All cores are ready to start\n");
-      }
-      // mempool_start_benchmark();
+#pragma omp barrier
+      mempool_start_benchmark();
 
       // Initialize tile lock
       if (id % NUM_CORES_PER_TILE == 0) {
+#pragma omp critical
         locks[tile_id] =
             (uint32_t *)domain_malloc(tile_alloc, sizeof(uint32_t));
         *locks[tile_id] = 0;
@@ -136,17 +116,7 @@ int main() {
       tile_lock = locks[tile_id];
 
       for (uint32_t i = 0; i < local_data_len; ++i) {
-        if (local_vector[i] == 99 && !is_in(local_offset + i, results, 51)) {
-#pragma omp critical
-          {
-            printf("(%u :%u) (%u) (%u) 99 at %u = %u + %u\n", id, tile_id,
-                   omp_get_thread_num(), local_offset / local_data_len,
-                   local_offset + i, local_offset, i);
-            for (uint32_t j = 0; j < local_data_len; ++j)
-              printf("%i, ", local_vector[j]);
-            printf("\n");
-          }
-        }
+
         if (local_vector[i] > local_max) {
           local_max = local_vector[i];
           lock_tile(tile_lock);
@@ -203,7 +173,7 @@ int main() {
         }
       }
       /* Critical section result ends */
-      // mempool_stop_benchmark();
+      mempool_stop_benchmark();
     }
 
     printf("Global max = %i\n", global_max);

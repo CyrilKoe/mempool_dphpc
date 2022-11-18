@@ -104,30 +104,17 @@ int main() {
       // Local data vector
       uint32_t local_offset = 0;
       uint32_t local_data_len = l2_data_len / omp_get_num_threads();
+      int32_t *local_vector = NULL;
       // Results
       uint32_t local_indexes_len = 0;
       all_local_max[id * BANKING_FACTOR] = DEFAULT_MAX_VALUE;
       all_local_indexes[id * BANKING_FACTOR] = NULL;
 
-      // Initialize the tile lock somewhere in the tile
-      if (id % NUM_CORES_PER_TILE == 0) {
-#pragma omp critical
-        {
-          locks[tile_id] =
-              (uint32_t *)domain_malloc(tile_alloc, sizeof(uint32_t));
-        }
-        *locks[tile_id] = 0;
-      }
-
-// Initialize your local pointer of the tile lock
-#pragma omp barrier
-      tile_lock = locks[tile_id];
-
       // Initialize your local vector of data somewhere in the tile
-      lock_tile(tile_lock);
-      int32_t *local_vector = (int32_t *)domain_malloc(
-          tile_alloc, local_data_len * sizeof(int32_t));
-      unlock_tile(tile_lock);
+
+#pragma omp critical
+      local_vector = (int32_t *)domain_malloc(tile_alloc,
+                                              local_data_len * sizeof(int32_t));
       if (!local_vector)
         printf("ERROR\n");
 
@@ -135,21 +122,33 @@ int main() {
       uint32_t local_i = 0;
 #pragma omp for
       for (uint32_t i = 0; i < l2_data_len; ++i) {
-        if (local_i == 0) {
-          // Keep your offset for later
+        // Keep your offset for later
+        if (local_i == 0)
           local_offset = i;
-        }
+
         local_vector[local_i++] = l2_data_flat[i];
       }
 
       // Start benchmark NOW
-      if (id == 0) {
+      if (id == 0)
         printf("All cores are ready to start\n");
-      }
 #pragma omp barrier
       mempool_start_benchmark();
 
+      // Initialize the tile lock somewhere in the tile
+      if (id % NUM_CORES_PER_TILE == 0) {
+#pragma omp critical
+        locks[tile_id] =
+            (uint32_t *)domain_malloc(tile_alloc, sizeof(uint32_t));
+        *locks[tile_id] = 0;
+      }
+
+// Initialize your local pointer of the tile lock
+#pragma omp barrier
+      tile_lock = locks[tile_id];
+
       for (uint32_t i = 0; i < local_data_len; ++i) {
+
         /* There's a better maximum */
         if (local_vector[i] > all_local_max[id * BANKING_FACTOR]) {
           // Set your local max to him

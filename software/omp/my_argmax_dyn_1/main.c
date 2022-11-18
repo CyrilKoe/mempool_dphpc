@@ -69,13 +69,15 @@ int main() {
       index_t *local_indexes = NULL;
       uint32_t local_indexes_len = 0;
       alloc_t *tile_alloc = get_alloc_tile(tile_id);
+      int32_t *local_vector = NULL;
 
-      // Initialize local vector of data within the tile
-      int32_t *local_vector = (int32_t *)domain_malloc(
-          tile_alloc, local_data_len * sizeof(int32_t));
-      if (!local_vector) {
-        *local_vector = 1;
-      }
+// Initialize local vector of data within the tile
+#pragma omp critical
+      local_vector = (int32_t *)domain_malloc(tile_alloc,
+                                              local_data_len * sizeof(int32_t));
+      if (!local_vector)
+        printf("ERROR\n");
+
       uint32_t local_i = 0;
 #pragma omp for
       for (uint32_t i = 0; i < l2_data_len; ++i) {
@@ -85,15 +87,14 @@ int main() {
         local_vector[local_i++] = l2_data_flat[i];
       }
 
-      if (id == 0) {
+      if (id == 0)
         printf("All cores are ready to start\n");
-      }
+
 #pragma omp barrier
       mempool_start_benchmark();
 
       for (uint32_t i = 0; i < local_data_len; ++i) {
-        // printf("id:%i, i:%i, j:%i, mat:%i, local_max:%i\n", id, i, j, a[i *
-        // num_columns + j], local_max);
+
         if (local_vector[i] > local_max) {
           local_max = local_vector[i];
 #pragma omp critical
@@ -102,19 +103,17 @@ int main() {
             local_indexes =
                 (index_t *)domain_malloc(tile_alloc, sizeof(index_t));
           }
-          if (!local_indexes) {
-            *(int32_t *)local_indexes = 1;
-          }
+          if (!local_indexes)
+            printf("ERROR\n");
           local_indexes->idx = local_offset + i;
           local_indexes->next = NULL;
           local_indexes_len = 1;
         } else if (local_vector[i] == local_max) {
           index_t *new_index;
 #pragma omp critical
-          { new_index = (index_t *)domain_malloc(tile_alloc, sizeof(index_t)); }
-          if (!new_index) {
-            *(int32_t *)new_index = 1;
-          }
+          new_index = (index_t *)domain_malloc(tile_alloc, sizeof(index_t));
+          if (!new_index)
+            printf("ERROR\n");
           new_index->next = local_indexes;
           new_index->idx = local_offset + i;
           ;
