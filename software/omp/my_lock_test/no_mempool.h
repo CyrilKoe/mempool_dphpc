@@ -1,0 +1,28 @@
+#ifndef NO_MEMPOOL_H_
+#define NO_MEMPOOL_H_
+
+#define NUM_CORES_PER_TILE 4
+#define NUM_CORES 256
+#define BANKING_FACTOR 4
+
+typedef struct {
+  char nothing;
+} alloc_t;
+
+void domain_free(alloc_t *alloc, void *const ptr) {
+    free(ptr);
+}
+
+void *domain_malloc(alloc_t *alloc, const uint32_t size) {
+    return malloc(size);
+}
+
+void *simple_malloc(const uint32_t size) {
+    return malloc(size);
+}
+
+alloc_t *get_alloc_tile(const uint32_t tile_id) { return NULL; }
+
+
+
+#endif
