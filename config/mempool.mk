@@ -25,3 +25,6 @@ axi_hier_radix ?= 20
 
 # Number of AXI masters per group
 axi_masters_per_group ?= 1
+
+# Hand_modif CK
+seq_mem_size ?= 2048

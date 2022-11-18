@@ -4,6 +4,7 @@ You need to modify your `config/mempool.mk` by adding :
 ```
 seq_mem_size ?= 2048
 ```
+First go in the my_argmax_dyn* dir and run `make run` to build the dirty soft links
 
 # OpenMP Applications
 
