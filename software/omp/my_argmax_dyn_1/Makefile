@@ -1,14 +1,16 @@
 LDFLAGS = -fopenmp
 CFLAGS = -D IS_MEMPOOL=0
-SIZE = 1024
-MAX = 100
 CC = gcc-11.2.0
-
-data.h:
-	../../../scripts/gen_data.py --clangformat=../../../install/llvm/bin/clang-format -o data.h --variable=l2_data --size=$(SIZE) --min=-$(MAX) --max=$(MAX)
 
 main: main.c data.h
 	${CC} ${CFLAGS} ${LDFLAGS} main.c -o main
+
+# Dirty soft link to not modify the omp Makefile
+data.h:
+	ln -s ../my_argmax_data/data.h data.h
+
+no_mempool.h:
+	ln -s ../my_argmax_data/no_mempool.h no_mempool.h
 
 dump: main
 	#objdump -d main > main.dump
@@ -16,3 +18,6 @@ dump: main
 run: main dump
 	../../../install/llvm/bin/clang-format -i main.c
 	./main
+
+clean:
+	rm -f data.h main main.dump no_mempool.h

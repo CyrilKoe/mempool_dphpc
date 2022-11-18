@@ -18,6 +18,8 @@
 #include "printf.h"
 #include "runtime.h"
 #include "synchronization.h"
+#else
+#include "no_mempool.h"
 #endif
 
 void *my_malloc(size_t size) {
@@ -68,9 +70,6 @@ int main() {
   mempool_barrier_init(core_id);
   mempool_init(core_id, num_cores);
   if (core_id == 0) {
-#else
-  struct timespec tstart = {0, 0}, tend = {0, 0};
-  clock_gettime(CLOCK_MONOTONIC, &tstart);
 #endif
 
     int32_t global_max = -1;
@@ -83,6 +82,12 @@ int main() {
       int32_t local_max = -1;
       index_t *local_indexes = NULL;
       uint32_t local_indexes_len = 0;
+
+      if (id == 0) {
+        printf("All cores are ready to start\n");
+      }
+#pragma omp barrier
+      mempool_start_benchmark();
 
 #pragma omp for
       for (uint32_t i = 0; i < l2_data_len; ++i) {
@@ -117,13 +122,13 @@ int main() {
 /* Critical section result starts */
 #pragma omp critical
       {
-        printf("id:%i, local_max:%i, local_indexes_len:%u\n", id, local_max,
-               local_indexes_len);
+        // printf("id:%i, local_max:%i, local_indexes_len:%u\n", id, local_max,
+        //       local_indexes_len);
 
         if (local_max > global_max) {
           // Delete previous result and add ours
           global_max = local_max;
-          free_all(global_indexes);
+          // free_all(global_indexes);
           global_indexes = local_indexes;
           global_indexes_len = local_indexes_len;
         } else if (local_max == global_max) {
@@ -137,15 +142,22 @@ int main() {
           global_indexes_len += local_indexes_len;
         } else {
           // Delete our result
-          free_all(local_indexes);
+          // free_all(local_indexes);
           local_indexes = NULL;
         }
       }
       /* Critical section result ends */
+      mempool_stop_benchmark();
     }
 
     printf("Global max = %i\n", global_max);
     printf("Global indexes len = %u\n", global_indexes_len);
+    index_t *tmp = global_indexes;
+    while (tmp) {
+      printf("-> %u ", tmp->idx);
+      tmp = tmp->next;
+    }
+    printf("\n");
 
 #if IS_MEMPOOL
   } else {
@@ -154,10 +166,5 @@ int main() {
       run_task(core_id);
     }
   }
-#else
-  clock_gettime(CLOCK_MONOTONIC, &tend);
-  printf("Done : %f ns\n",
-         ((double)tend.tv_sec + 1.0e-9 * tend.tv_nsec) -
-             ((double)tstart.tv_sec + 1.0e-9 * tstart.tv_nsec));
 #endif
 }
