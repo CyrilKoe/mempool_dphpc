@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 export mempool_path=/scratch2/gislamoglu/hpc/mempool
-export app=onnx_ReduceSum
+export app=onnx_ReduceSum8
 export script_path=$mempool_path/onnx_benchmark
-export folder_path=$mempool_path/onnx_benchmark/ReduceSum_new
+export folder_path=$mempool_path/onnx_benchmark/ReduceSum8_new
 
 mkdir $folder_path
 
