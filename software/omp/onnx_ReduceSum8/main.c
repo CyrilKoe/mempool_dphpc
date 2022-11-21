@@ -73,9 +73,9 @@ int32_t reduce_sum_parallel1(int8_t const *__restrict__ A,
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
-    for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
+    for (uint32_t j = 0; j < 16; ++j) {
+      Partial_sums[id] += A[i*16+j];
     }
   }
   mempool_barrier(numThreads);
@@ -115,9 +115,9 @@ int32_t reduce_sum_parallel3(int8_t const *__restrict__ A,
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
-    for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
+    for (uint32_t j = 0; j < 16; ++j) {
+      Partial_sums[id] += A[i*16+j];
     }
   }
   mempool_barrier(numThreads);
@@ -161,9 +161,9 @@ int32_t reduce_sum_parallel4(int8_t const *__restrict__ A,
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
-    for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
+    for (uint32_t j = 0; j < 16; ++j) {
+      Partial_sums[id] += A[i*16+j];
     }
   }
   mempool_barrier(numThreads);
@@ -289,7 +289,7 @@ int32_t reduce_sum_parallel1_simd(int32_t const *__restrict__ A,
                              uint32_t numThreads) {
   Partial_sums[id] = 0;
   int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
       Partial_sums[id] = __SUMDOTPSC4((v4s)*(A+i*4+j), 1, Partial_sums[id]);
     }
@@ -328,7 +328,7 @@ int32_t reduce_sum_parallel3_simd(int32_t const *__restrict__ A,
                                   uint32_t numThreads) {
   Partial_sums[id] = 0;
   int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
       Partial_sums[id] = __SUMDOTPSC4((v4s)*(A+i*4+j), 1, Partial_sums[id]);
     }
@@ -373,7 +373,7 @@ int32_t reduce_sum_parallel4_simd(int32_t const *__restrict__ A,
                                   uint32_t numThreads) {
   Partial_sums[id] = 0;
   int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
       Partial_sums[id] = __SUMDOTPSC4((v4s)*(A+i*4+j), 1, Partial_sums[id]);
     }
@@ -556,7 +556,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel1(a, M, core_id, num_cores);
+  result = reduce_sum_parallel1(a, M/16, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -586,7 +586,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel3(a, M, core_id, num_cores);
+  result = reduce_sum_parallel3(a, M/16, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -601,7 +601,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel4(a, M, core_id, num_cores);
+  result = reduce_sum_parallel4(a, M/16, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -634,7 +634,7 @@ int main() {
   
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel1_simd((int32_t *)a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel1_simd((int32_t *)a, M/16, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -664,7 +664,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel3_simd((int32_t *)a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel3_simd((int32_t *)a, M/16, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -679,7 +679,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel4_simd((int32_t *)a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel4_simd((int32_t *)a, M/16, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
