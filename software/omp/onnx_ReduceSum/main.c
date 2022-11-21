@@ -26,7 +26,7 @@
 // Note: To keep the code simpler, we use indices that go from 0 to N-1 instead
 // of 1 to N as the mathematicians do. Hence, for A, i=[0,M-1].
 #define A_a 1
-#define A_b 1
+#define A_b 10
 // Enable verbose printing
 #define VERBOSE
 
@@ -35,9 +35,11 @@ int32_t a[M] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 int32_t Partial_sums[NUM_CORES] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
-int32_t reduced_group[4] __attribute__((section(".l1")))
+int32_t reduced4[4] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 int32_t reduced16[16] __attribute__((section(".l1")))
+__attribute__((aligned(NUM_CORES * 4 * 4)));
+int32_t reduced_atomic __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 
 // Initialize the matrices in parallel
@@ -73,7 +75,7 @@ int32_t reduce_sum_parallel1(int32_t const *__restrict__ A,
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
       Partial_sums[id] += A[i*4+j];
     }
@@ -115,40 +117,40 @@ int32_t reduce_sum_parallel3(int32_t const *__restrict__ A,
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
       Partial_sums[id] += A[i*4+j];
     }
   }
   mempool_barrier(numThreads);
   if (id == 0) {
-    reduced_group[0] = 0;
+    reduced4[0] = 0;
     for (uint32_t i = id; i < 64; i += 1) {
-      reduced_group[0] += Partial_sums[i];
+      reduced4[0] += Partial_sums[i];
     }
   }
   if (id == 16) {
-    reduced_group[1] = 0;
+    reduced4[1] = 0;
     for (uint32_t i = 64; i < 128; i += 1) {
-      reduced_group[1] += Partial_sums[i];
+      reduced4[1] += Partial_sums[i];
     }
   }
   if (id == 32) {
-    reduced_group[2] = 0;
+    reduced4[2] = 0;
     for (uint32_t i = 128; i < 192; i += 1) {
-      reduced_group[2] += Partial_sums[i];
+      reduced4[2] += Partial_sums[i];
     }
   }
   if (id == 48) {
-    reduced_group[3] = 0;
+    reduced4[3] = 0;
     for (uint32_t i = 192; i < 256; i += 1) {
-      reduced_group[3] += Partial_sums[i];
+      reduced4[3] += Partial_sums[i];
     }
   }
   mempool_barrier(numThreads);
   if (id == 0) {
     for (uint32_t i = 0; i < 4; i += 1) {
-      reduced += reduced_group[i];
+      reduced += reduced4[i];
     }
   }
   mempool_barrier(numThreads);
@@ -161,7 +163,7 @@ int32_t reduce_sum_parallel4(int32_t const *__restrict__ A,
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
-  for (uint32_t i = id; i < num_elements/4; i += numThreads) {
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
       Partial_sums[id] += A[i*4+j];
     }
@@ -273,6 +275,24 @@ int32_t reduce_sum_parallel4(int32_t const *__restrict__ A,
   return reduced;
 }
 
+int32_t reduce_sum_parallel_atomic(int32_t const *__restrict__ A,
+                                    uint32_t num_elements, uint32_t id,
+                                    uint32_t numThreads) {
+
+  reduced_atomic = 0;
+  mempool_barrier(numThreads);
+  int32_t partial_sum = 0;
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
+    for (uint32_t j = 0; j < 4; ++j) {
+      partial_sum += A[i*4+j];
+    }
+  }
+#pragma omp atomic
+  reduced_atomic += partial_sum;
+  mempool_barrier(numThreads);
+  return reduced_atomic;
+}
+
 int32_t reduce_sum_omp_static(int32_t const *__restrict__ A,
                               uint32_t num_elements) {
   uint32_t i;
@@ -344,7 +364,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel1(a, M, core_id, num_cores);
+  result = reduce_sum_parallel1(a, M/4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -374,7 +394,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel3(a, M, core_id, num_cores);
+  result = reduce_sum_parallel3(a, M/4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -389,7 +409,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel4(a, M, core_id, num_cores);
+  result = reduce_sum_parallel4(a, M/4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -398,6 +418,21 @@ int main() {
   if (core_id == 0) {
     printf("Manual Parallel4 Result: %d\n", result);
     printf("Manual Parallel4 Duration: %d\n", cycles);
+  }
+#endif
+  mempool_barrier(num_cores);
+
+  cycles = mempool_get_timer();
+  mempool_start_benchmark();
+  result = reduce_sum_parallel_atomic(a, M/4, core_id, num_cores);
+  mempool_stop_benchmark();
+  cycles = mempool_get_timer() - cycles;
+
+#ifdef VERBOSE
+  mempool_barrier(num_cores);
+  if (core_id == 0) {
+    printf("Manual Parallel Atomic Result: %d\n", result);
+    printf("Manual Parallel Atomic Duration: %d\n", cycles);
   }
 #endif
   mempool_barrier(num_cores);
