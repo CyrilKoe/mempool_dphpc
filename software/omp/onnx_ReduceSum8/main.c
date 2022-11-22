@@ -579,6 +579,11 @@ int main() {
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
   }
+  else {
+    mempool_wait(4 * num_cores);
+    mempool_start_benchmark();
+    mempool_stop_benchmark();
+  }
 
 #ifdef VERBOSE
   mempool_barrier(num_cores);
@@ -656,6 +661,11 @@ int main() {
     result = reduce_sum_sequential_simd((int32_t *)a, M/4);
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
+  }
+  else {
+    mempool_wait(4 * num_cores);
+    mempool_start_benchmark();
+    mempool_stop_benchmark();
   }
 
 #ifdef VERBOSE
