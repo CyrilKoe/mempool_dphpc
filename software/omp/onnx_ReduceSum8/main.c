@@ -35,7 +35,7 @@ int8_t a[M] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 int32_t Partial_sums[NUM_CORES] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
-int32_t reduced_group[4] __attribute__((section(".l1")))
+int32_t reduced4[4] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 int32_t reduced16[16] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
@@ -124,33 +124,33 @@ int32_t reduce_sum_parallel3(int8_t const *__restrict__ A,
   }
   mempool_barrier(numThreads);
   if (id == 0) {
-    reduced_group[0] = 0;
+    reduced4[0] = 0;
     for (uint32_t i = id; i < 64; i += 1) {
-      reduced_group[0] += Partial_sums[i];
+      reduced4[0] += Partial_sums[i];
     }
   }
   if (id == 16) {
-    reduced_group[1] = 0;
+    reduced4[1] = 0;
     for (uint32_t i = 64; i < 128; i += 1) {
-      reduced_group[1] += Partial_sums[i];
+      reduced4[1] += Partial_sums[i];
     }
   }
   if (id == 32) {
-    reduced_group[2] = 0;
+    reduced4[2] = 0;
     for (uint32_t i = 128; i < 192; i += 1) {
-      reduced_group[2] += Partial_sums[i];
+      reduced4[2] += Partial_sums[i];
     }
   }
   if (id == 48) {
-    reduced_group[3] = 0;
+    reduced4[3] = 0;
     for (uint32_t i = 192; i < 256; i += 1) {
-      reduced_group[3] += Partial_sums[i];
+      reduced4[3] += Partial_sums[i];
     }
   }
   mempool_barrier(numThreads);
   if (id == 0) {
     for (uint32_t i = 0; i < 4; i += 1) {
-      reduced += reduced_group[i];
+      reduced += reduced4[i];
     }
   }
   mempool_barrier(numThreads);
@@ -337,33 +337,33 @@ int32_t reduce_sum_parallel3_simd(int32_t const *__restrict__ A,
   }
   mempool_barrier(numThreads);
   if (id == 0) {
-    reduced_group[0] = 0;
+    reduced4[0] = 0;
     for (uint32_t i = id; i < 64; i += 1) {
-      reduced_group[0] += Partial_sums[i];
+      reduced4[0] += Partial_sums[i];
     }
   }
   if (id == 16) {
-    reduced_group[1] = 0;
+    reduced4[1] = 0;
     for (uint32_t i = 64; i < 128; i += 1) {
-      reduced_group[1] += Partial_sums[i];
+      reduced4[1] += Partial_sums[i];
     }
   }
   if (id == 32) {
-    reduced_group[2] = 0;
+    reduced4[2] = 0;
     for (uint32_t i = 128; i < 192; i += 1) {
-      reduced_group[2] += Partial_sums[i];
+      reduced4[2] += Partial_sums[i];
     }
   }
   if (id == 48) {
-    reduced_group[3] = 0;
+    reduced4[3] = 0;
     for (uint32_t i = 192; i < 256; i += 1) {
-      reduced_group[3] += Partial_sums[i];
+      reduced4[3] += Partial_sums[i];
     }
   }
   mempool_barrier(numThreads);
   if (id == 0) {
     for (uint32_t i = 0; i < 4; i += 1) {
-      reduced += reduced_group[i];
+      reduced += reduced4[i];
     }
   }
   mempool_barrier(numThreads);
