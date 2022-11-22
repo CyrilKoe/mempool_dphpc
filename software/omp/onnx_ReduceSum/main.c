@@ -352,6 +352,11 @@ int main() {
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
   }
+  else {
+    mempool_wait(4 * num_cores);
+    mempool_start_benchmark();
+    mempool_stop_benchmark();
+  }
 
 #ifdef VERBOSE
   mempool_barrier(num_cores);
