@@ -36,6 +36,7 @@
 #define SIZE (M*M*sizeof(int32_t))
 
 int32_t matrix_A[M * M] __attribute__((section(".l1_prio")));
+// TODO: implement writing back of result in double-buffered fashion
 // int32_t matrix_B[((int)((M - K)/S) + 1) * ((int)((M - K)/S) + 1)] __attribute__((section(".l1_prio")));
 
 int volatile error __attribute__((section(".l1")));
