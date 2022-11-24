@@ -62,23 +62,16 @@ int main() {
     max_pooling_sequential(matrix_A, M, K, S);
     mempool_stop_benchmark();
     printf("Sequential pooling done...\n");
+    printf("Starting parallel pooling...\n");
   }
 
   // wait until all cores have finished
   mempool_barrier(num_cores);
 
-  // Benchmark max pooling kernel
-  if (core_id == 0) {
-    printf("Starting parallel pooling...\n");
-  }
-
   mempool_start_benchmark();
   max_pooling_parallel(matrix_A, M, K, S, core_id, num_cores);
   mempool_stop_benchmark();
 
-  if (core_id == 0) {
-    printf("Parallel pooling done...\n");
-  }
 
   // wait until all cores have finished
   mempool_barrier(num_cores);
