@@ -16,10 +16,10 @@
  * 
  */
 
+dump(max, 7);
 // Each core computes the output matrix. No parallelization yet for benchmark reference.
 void max_pooling_sequential(int32_t const *__restrict__ A,
-                        int32_t const *__restrict__ B, int32_t *__restrict__ C,
-                        uint32_t M, uint32_t N, uint32_t K, uint32_t S) {
+                        uint32_t M, uint32_t K, uint32_t S) {
 
     // Initialize the maximum with the minimum representable value
     int32_t max;
@@ -28,16 +28,88 @@ void max_pooling_sequential(int32_t const *__restrict__ A,
         for (uint32_t y = 0; y < M - K + 1; y += S) {
             // Initialize the maximum with the minimum representable value
             max = -2147483648;
+            // printf("Current coordinate [%d, %d]\n", x, y);
             // Iterate over the pooling kernel to find the maximum
             // value inside a pool
             for (uint32_t k_x = 0; k_x < K; k_x++) {
                 for (uint32_t k_y = 0; k_y < K; k_y++) {
-                    if (A[x + k_x + (y + k_y) * M] > max) {
-                        max = A[x + k_x + (y + k_y) * M];
+                    // printf("flattened [x,y] = %d\n", y + k_y + (x + k_x) * M);
+                    // printf("A[%d][%d] = %d\n", y + k_y, (x + k_x), A[y + k_y + (x + k_x) * M]);
+                    // printf("max[%d][%d] = %d\n", x + k_x, (y + k_y) * M, max);
+                    if (A[y + k_y + (x + k_x) * M] > max) {
+                        max = A[y + k_y + (x + k_x) * M];
                     }
                 }
             }
-            B[int(x/S) + int(y/S) * (M - int(K/S) + 1)] = max;
+            // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
+            printf("Maximum value = %d\n", max);
+        }
+    }
+  
+}
+
+// parallelizing computation over all cores
+void max_pooling_parallel(int32_t const *__restrict__ A,
+                        uint32_t M, uint32_t K, uint32_t S, 
+                        uint32_t core_id, uint32_t num_cores) {
+
+    // Initialize the maximum with the minimum representable value
+    int32_t max;
+    uint32_t x_start = 0;
+    uint32_t y_start = core_id * S;
+    uint32_t x_end = M - K + 1;
+    uint32_t y_end = M - K + 1;
+    
+    for (uint32_t x = x_start; x < x_end; x += S) {
+        for (uint32_t y = y_start; y < y_end; y += S * num_cores) {
+            // Initialize the maximum with the minimum representable value
+            max = -2147483648;
+            // printf("Current coordinate [%d, %d]\n", x, y);
+            // Iterate over the pooling kernel to find the maximum
+            // value inside a pool
+            for (uint32_t k_x = 0; k_x < K; k_x++) {
+                for (uint32_t k_y = 0; k_y < K; k_y++) {
+                    // printf("flattened [x,y] = %d\n", y + k_y + (x + k_x) * M);
+                    // printf("A[%d][%d] = %d\n", y + k_y, (x + k_x), A[y + k_y + (x + k_x) * M]);
+                    // printf("max[%d][%d] = %d\n", x + k_x, (y + k_y) * M, max);
+                    if (A[y + k_y + (x + k_x) * M] > max) {
+                        max = A[y + k_y + (x + k_x) * M];
+                    }
+                }
+            }
+            // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
+            // printf("Maximum value = %d\n", max);
+            dump_max(max);
+        }
+    }
+  
+}
+
+void max_pooling_openmp(int32_t const *__restrict__ A,
+                        uint32_t M, uint32_t K, uint32_t S) {
+
+    // Initialize the maximum with the minimum representable value
+    int32_t max;
+    #pragma omp parallel for collapse(2) firstprivate(max)
+    for (uint32_t x = 0; x < M - K + 1; x += S) {
+        for (uint32_t y = 0; y < M - K + 1; y += S) {
+            // Initialize the maximum with the minimum representable value
+            max = -2147483648;
+            // printf("Current coordinate [%d, %d]\n", x, y);
+            // Iterate over the pooling kernel to find the maximum
+            // value inside a poolSS
+            for (uint32_t k_x = 0; k_x < K; k_x++) {
+                for (uint32_t k_y = 0; k_y < K; k_y++) {
+                    // printf("flattened [x,y] = %d\n", y + k_y + (x + k_x) * M);
+                    // printf("A[%d][%d] = %d\n", y + k_y, (x + k_x), A[y + k_y + (x + k_x) * M]);
+                    // printf("max[%d][%d] = %d\n", x + k_x, (y + k_y) * M, max);
+                    if (A[y + k_y + (x + k_x) * M] > max) {
+                        max = A[y + k_y + (x + k_x) * M];
+                    }
+                }
+            }
+            // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
+            dump_max(max);
         }
     }
   
