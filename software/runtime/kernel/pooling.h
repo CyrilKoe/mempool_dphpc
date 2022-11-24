@@ -16,6 +16,21 @@
  * 
  */
 
+// Add defines for dynamic scheduling
+#define CHUNK 1
+#define THREADS 256
+
+// Add defines for broken openMP in mempool
+#define K_END 2
+#define STRIDE 1
+#define OUT 4
+// for now hard-coded, but should be OUT_SIZE + K - S
+#define M_DIM 5
+#define X_START 0
+#define X_END 4 //(M_DIM - K + 1)
+#define Y_START 0
+#define Y_END 4 //(M_DIM - K + 1)
+
 dump(max, 7);
 // Each core computes the output matrix. No parallelization yet for benchmark reference.
 void max_pooling_sequential(int32_t const *__restrict__ A,
@@ -78,7 +93,7 @@ void max_pooling_parallel(int32_t const *__restrict__ A,
   
 }
 
-void max_pooling_openmp(int32_t const *__restrict__ A,
+void max_pooling_openmp_static(int32_t const *__restrict__ A,
                         uint32_t M, uint32_t K, uint32_t S) {
 
     // Initialize the maximum with the minimum representable value
@@ -92,6 +107,32 @@ void max_pooling_openmp(int32_t const *__restrict__ A,
             // value inside a poolSS
             for (uint32_t k_x = 0; k_x < K; k_x++) {
                 for (uint32_t k_y = 0; k_y < K; k_y++) {
+                    if (A[y + k_y + (x + k_x) * M] > max) {
+                        max = A[y + k_y + (x + k_x) * M];
+                    }
+                }
+            }
+            // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
+            dump_max(max);
+        }
+    }
+  
+}
+
+void max_pooling_openmp_dynamic(int32_t const *__restrict__ A,
+                        uint32_t M, uint32_t K, uint32_t S) {
+
+    // Initialize the maximum with the minimum representable value
+    int32_t max;
+    #pragma omp parallel for schedule(dynamic, CHUNK) num_threads(THREADS) collapse(2) firstprivate(max)
+    for (uint32_t x = 0; x < X_END; x += STRIDE) {
+        for (uint32_t y = 0; y < Y_END; y += STRIDE) {
+            // Initialize the maximum with the minimum representable value
+            max = -2147483648;
+            // Iterate over the pooling kernel to find the maximum
+            // value inside a pool
+            for (uint32_t k_x = 0; k_x < K_END; k_x++) {
+                for (uint32_t k_y = 0; k_y < K_END; k_y++) {
                     if (A[y + k_y + (x + k_x) * M] > max) {
                         max = A[y + k_y + (x + k_x) * M];
                     }

@@ -30,6 +30,7 @@
 #define SIZE (M*M*sizeof(int32_t))
 
 int32_t matrix_A[M * M] __attribute__((section(".l1_prio")));
+// TODO: implement writing back of result in double-buffered fashion
 // int32_t matrix_B[((int)((M - K)/S) + 1) * ((int)((M - K)/S) + 1)] __attribute__((section(".l1_prio")));
 
 int volatile error __attribute__((section(".l1")));
@@ -53,13 +54,11 @@ int main() {
   
   if (core_id == 0) {
     // Benchmark max pooling kernel
-    mempool_start_benchmark();
     printf("Starting openMP pooling with static scheduling...\n");
-    // max_pooling_sequential(matrix_A,
-    //                     matrix_B, M, K, S);
-    max_pooling_openmp(matrix_A, M, K, S);
-    printf("OpenMP pooling with static scheduling done...\n");
+    mempool_start_benchmark();
+    max_pooling_openmp_static(matrix_A, M, K, S);
     mempool_stop_benchmark();
+    printf("OpenMP pooling with static scheduling done...\n");
   } else {
     while(1) {
       mempool_wfi();
@@ -68,6 +67,26 @@ int main() {
       mempool_stop_benchmark();
     }
   }
+
+  mempool_barrier_init(core_id);
+
+  if (core_id == 0) {
+    // Benchmark max pooling kernel
+    printf("Starting openMP pooling with dynamic scheduling...\n");
+    mempool_start_benchmark();
+    max_pooling_openmp_dynamic(matrix_A, M, K, S);
+    mempool_stop_benchmark();
+    printf("OpenMP pooling with dynamic scheduling done...\n");
+  } else {
+    while(1) {
+      mempool_wfi();
+      mempool_start_benchmark();
+      run_task(core_id);
+      mempool_stop_benchmark();
+    }
+  }
+
+  mempool_barrier_init(core_id);
   
   return 0;
 }
