@@ -43,6 +43,10 @@ index_t *all_local_indexes[NUM_BANKS]
 // cares
 uint32_t *locks[NUM_CORES / NUM_CORES_PER_TILE];
 
+/* Logarithmic reduction */
+uint32_t volatile red_barrier[NUM_BANKS]
+    __attribute__((aligned(NUM_BANKS), section(".l1")));
+
 void free_all(alloc_t *tile_alloc, index_t *indexes) {
   index_t *tmp = indexes;
   while (tmp) {
@@ -74,7 +78,8 @@ void unlock_tile(uint32_t *lock) {
   __atomic_fetch_and(lock, 0, __ATOMIC_SEQ_CST);
 }
 
-void mempool_log_reduction(uint32_t volatile step, uint32_t core_id);
+void mempool_log_reduction(uint32_t volatile step, uint32_t core_id,
+                           uint32_t num_cores);
 
 int main() {
 
@@ -92,26 +97,35 @@ int main() {
 
     print_lock = 0;
 
-#pragma omp parallel num_threads(NUM_CORES)
+    // Initialize reduction barrier with 0 (avoid x)
+    for (uint32_t i = 0; i < NUM_BANKS; i++) {
+      red_barrier[i] = 0;
+    }
+
+#pragma omp parallel num_threads(NUM_CORES_BENCH)
     {
       // Utils
       uint32_t id = omp_get_thread_num();
       uint32_t tile_id = id / NUM_CORES_PER_TILE;
+      uint32_t num_cores = omp_get_num_threads();
       alloc_t *tile_alloc = get_alloc_tile(tile_id);
       // This pointer (located in local stack) points the the tile_lock (located
       // somewhere in the tile)
       uint32_t *tile_lock = NULL;
       // Local data vector
       uint32_t local_offset = 0;
-      uint32_t local_data_len = l2_data_len / omp_get_num_threads();
+      uint32_t local_data_len = l2_data_len / num_cores;
       int32_t *local_vector = NULL;
       // Results
       uint32_t local_indexes_len = 0;
       all_local_max[id * BANKING_FACTOR] = DEFAULT_MAX_VALUE;
       all_local_indexes[id * BANKING_FACTOR] = NULL;
 
-      // Initialize your local vector of data somewhere in the tile
+      if (id == 0)
+        printf("Benchmark %u cores and %u datas (%u per core)\n",
+               NUM_CORES_BENCH, l2_data_len, local_data_len);
 
+        // Initialize your local vector of data somewhere in the tile
 #pragma omp critical
       local_vector = (int32_t *)domain_malloc(tile_alloc,
                                               local_data_len * sizeof(int32_t));
@@ -191,8 +205,11 @@ int main() {
         }
       }
 
+      // if (id == 0)
+      // printf("Entering reduction\n");
+
       // No need for barrier here, its inside the log reduction
-      mempool_log_reduction(2, id);
+      mempool_log_reduction(2, id, num_cores);
 
       mempool_stop_benchmark();
     }
@@ -231,11 +248,8 @@ int main() {
 #endif
 }
 
-/* Logarithmic reduction */
-uint32_t volatile red_barrier[NUM_BANKS]
-    __attribute__((aligned(NUM_BANKS), section(".l1")));
-
-void mempool_log_reduction(uint32_t volatile step, uint32_t core_id) {
+void mempool_log_reduction(uint32_t volatile step, uint32_t core_id,
+                           uint32_t num_cores) {
   // TODO : Comments
   uint32_t idx, step_idx = (step * (core_id / step)) * BANKING_FACTOR;
   uint32_t next_step, previous_step;
@@ -243,13 +257,17 @@ void mempool_log_reduction(uint32_t volatile step, uint32_t core_id) {
   index_t *local_indexes = NULL;
 
   previous_step = step >> 1;
+
+  // Check if the collegue arrived before
   if ((step - previous_step) ==
       __atomic_fetch_add(&red_barrier[step_idx + previous_step - 1],
                          previous_step, __ATOMIC_RELAXED)) {
-
+    // He did, so compare your values
     local_max = DEFAULT_MAX_VALUE;
     idx = step_idx;
+    // Overkill, there should be only two values to check
     while (idx < step_idx + step * BANKING_FACTOR) {
+
       if (all_local_max[idx] > local_max) {
         local_max = all_local_max[idx];
         local_indexes = all_local_indexes[idx];
@@ -263,28 +281,15 @@ void mempool_log_reduction(uint32_t volatile step, uint32_t core_id) {
       }
       idx += previous_step * BANKING_FACTOR;
     }
+    // Now you got the new local_max and local_indexes
     all_local_max[step_idx] = local_max;
     all_local_indexes[step_idx] = local_indexes;
-
-#if DEBUG
-    lock_tile(&print_lock);
-    if (all_local_max[step_idx] == 99) {
-      printf("%u, %u, %i, %u, %4x", step, step_idx, all_local_max[step_idx],
-             all_local_indexes[step_idx]->idx, all_local_indexes[step_idx]);
-      index_t *tmp = all_local_indexes[step_idx];
-      while (tmp) {
-        printf(" -> %u", tmp->idx);
-        tmp = tmp->next;
-      }
-      printf("\n");
-    }
-    unlock_tile(&print_lock);
-#endif
 
     next_step = step << 1;
     __atomic_store_n(&red_barrier[step_idx + previous_step - 1], 0,
                      __ATOMIC_RELAXED);
-    if (step == NUM_CORES) {
+
+    if (step == num_cores) {
       all_local_max[0] = all_local_max[step_idx];
       all_local_indexes[0] = all_local_indexes[step_idx];
       __sync_synchronize(); // Full memory barrier
@@ -293,7 +298,7 @@ void mempool_log_reduction(uint32_t volatile step, uint32_t core_id) {
       mempool_wfi();
 #endif
     } else {
-      mempool_log_reduction(next_step, core_id);
+      mempool_log_reduction(next_step, core_id, num_cores);
     }
 
   } else {

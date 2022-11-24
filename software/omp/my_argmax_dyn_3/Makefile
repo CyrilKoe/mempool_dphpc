@@ -1,16 +1,10 @@
 LDFLAGS = -fopenmp
-CFLAGS = -D IS_MEMPOOL=0
+NUM_CORES_BENCH ?= NUM_CORES
+CFLAGS = -D IS_MEMPOOL=0 -DNUM_CORES_BENCH=$(NUM_CORES_BENCH) -I../my_argmax_data
 CC = gcc-11.2.0
 
-main: main.c data.h no_mempool.h
+main: main.c ../my_argmax_data/data.h ../my_argmax_data/no_mempool.h
 	${CC} ${CFLAGS} ${LDFLAGS} main.c -o main
-
-# Dirty soft link to not modify the omp Makefile
-data.h:
-	ln -s ../my_argmax_data/data.h data.h
-
-no_mempool.h:
-	ln -s ../my_argmax_data/no_mempool.h no_mempool.h
 
 dump: main
 	#objdump -d main > main.dump
@@ -20,4 +14,4 @@ run: main dump
 	./main
 
 clean:
-	rm -f data.h main main.dump no_mempool.h
+	rm -f main main.dump
