@@ -1,4 +1,5 @@
-SIZE = 256*64
+DATA_GEN_SIZE ?= 64
+SIZE = $(DATA_GEN_SIZE)*256
 MAX = 100
 
 data.h:
