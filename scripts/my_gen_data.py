@@ -40,9 +40,9 @@ def gen_var(variable, size, min, max, generator):
         elif int(i) == max_val:
             argmax.append(idx)
     
-    var = f'#include <inttypes.h>\n'
-    var += f'int32_t {variable}_flat[{num}] __attribute__((section(".l2"))) = {{ {val} }};\n'
-    var += f'uint32_t const {variable}_len = {num};\n'
+    var = f'#include <inttypes.h>\n#define DATA_LEN {num}\n'
+    var += f'int32_t {variable}_flat[DATA_LEN] __attribute__((section(".l2"))) = {{ {val} }};\n'
+    var += f'uint32_t const {variable}_len = DATA_LEN;\n'
     var += f'//result_max = {max_val}\n// result_len = {len(argmax)} \n// result = {argmax}\n'
     
     offset = 0

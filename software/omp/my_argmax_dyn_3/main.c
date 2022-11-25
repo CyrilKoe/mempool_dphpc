@@ -33,6 +33,7 @@ typedef struct index_list {
 } index_t; // sizeof(index_t) = 0x8
 
 uint32_t print_lock __attribute__((section(".l1")));
+uint32_t malloc_lock __attribute__((section(".l1")));
 
 int32_t all_local_max[NUM_BANKS]
     __attribute__((aligned(NUM_BANKS), section(".l1")));
@@ -58,7 +59,7 @@ void free_all(alloc_t *tile_alloc, index_t *indexes) {
   }
 }
 
-void lock_tile(uint32_t *lock) {
+void do_lock(uint32_t *lock) {
   uint32_t islocked;
   islocked = __atomic_fetch_or(lock, 1, __ATOMIC_SEQ_CST);
   while (islocked) {
@@ -74,7 +75,7 @@ void lock_tile(uint32_t *lock) {
   }
 }
 
-void unlock_tile(uint32_t *lock) {
+void do_unlock(uint32_t *lock) {
   __atomic_fetch_and(lock, 0, __ATOMIC_SEQ_CST);
 }
 
@@ -96,6 +97,7 @@ int main() {
     uint32_t global_indexes_len = 0;
 
     print_lock = 0;
+    malloc_lock = 0;
 
     // Initialize reduction barrier with 0 (avoid x)
     for (uint32_t i = 0; i < NUM_BANKS; i++) {
@@ -124,13 +126,20 @@ int main() {
       if (id == 0)
         printf("Benchmark %u cores and %u datas (%u per core)\n",
                NUM_CORES_BENCH, l2_data_len, local_data_len);
+    
+    #pragma omp barrier
 
-        // Initialize your local vector of data somewhere in the tile
-#pragma omp critical
+      // Initialize your local vector of data somewhere in the tile
+      do_lock(&malloc_lock);
       local_vector = (int32_t *)domain_malloc(tile_alloc,
                                               local_data_len * sizeof(int32_t));
-      if (!local_vector)
-        printf("ERROR\n");
+      if (!local_vector) {
+        local_vector =
+            (int32_t *)simple_malloc(local_data_len * sizeof(int32_t));
+        if (!local_vector)
+          printf("ERROR\n");
+      }
+      do_unlock(&malloc_lock);
 
       // Fill your local vector of data
       uint32_t local_i = 0;
@@ -151,9 +160,15 @@ int main() {
 
       // Initialize the tile lock somewhere in the tile
       if (id % NUM_CORES_PER_TILE == 0) {
-#pragma omp critical
+        do_lock(&malloc_lock);
         locks[tile_id] =
             (uint32_t *)domain_malloc(tile_alloc, sizeof(uint32_t));
+        if (!locks[tile_id]) {
+          locks[tile_id] = (uint32_t *)simple_malloc(sizeof(index_t));
+          if (!locks[tile_id])
+            printf("ERROR\n");
+        }
+        do_unlock(&malloc_lock);
         *locks[tile_id] = 0;
       }
 
@@ -169,14 +184,19 @@ int main() {
           all_local_max[id * BANKING_FACTOR] = local_vector[i];
 
           // Free your local index list and alloc a new one
-          lock_tile(tile_lock);
+          do_lock(tile_lock);
           free_all(tile_alloc, all_local_indexes[id * BANKING_FACTOR]);
           all_local_indexes[id * BANKING_FACTOR] =
               (index_t *)domain_malloc(tile_alloc, sizeof(index_t));
-          unlock_tile(tile_lock);
-
-          if (!all_local_indexes[id * BANKING_FACTOR])
-            printf("ERROR\n");
+          if (!all_local_indexes[id * BANKING_FACTOR]) {
+            do_lock(&malloc_lock);
+            all_local_indexes[id * BANKING_FACTOR] =
+                (index_t *)simple_malloc(sizeof(index_t));
+            if (!all_local_indexes[id * BANKING_FACTOR])
+              printf("ERROR\n");
+            do_unlock(&malloc_lock);
+          }
+          do_unlock(tile_lock);
 
           // Save this new max's index
           all_local_indexes[id * BANKING_FACTOR]->idx = local_offset + i;
@@ -189,11 +209,16 @@ int main() {
 
           // Allocate a new entry for its index
           index_t *new_index;
-          lock_tile(tile_lock);
+          do_lock(tile_lock);
           new_index = (index_t *)domain_malloc(tile_alloc, sizeof(index_t));
-          unlock_tile(tile_lock);
-          if (!new_index)
-            printf("ERROR\n");
+          if (!new_index) {
+            do_lock(&malloc_lock);
+            new_index = (index_t *)simple_malloc(sizeof(index_t));
+            if (!new_index)
+              printf("ERROR\n");
+            do_unlock(&malloc_lock);
+          }
+          do_unlock(tile_lock);
 
           // Save this new max's index
           new_index->idx = local_offset + i;
