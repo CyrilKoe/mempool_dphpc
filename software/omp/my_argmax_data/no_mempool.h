@@ -21,6 +21,10 @@ void *simple_malloc(const uint32_t size) {
     return malloc(size);
 }
 
+void *simple_free(void *const ptr) {
+    free(ptr);
+}
+
 alloc_t *get_alloc_tile(const uint32_t tile_id) { return NULL; }
 
 void mempool_stop_benchmark() {;}
