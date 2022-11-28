@@ -19,14 +19,17 @@
 
 #define DMA_ADDRESS (0x40010000)
 
+#define STATIC 1
+#define DYNAMIC 0
+
 
 // define matrix dimensions
 // B = maxpool(A, K, S) with A[MxM], pooling kernel [KxK] and stride S
-#define K 2
-#define S 1
-#define OUT 4
+#define K 16
+#define S 4
+#define OUT 256
 // for now hard-coded, but should be OUT_SIZE + K - S
-#define M 5
+#define M (OUT + K - S)
 #define SIZE (M*M*sizeof(int32_t))
 
 int32_t matrix_A[M * M] __attribute__((section(".l1_prio")));
@@ -52,38 +55,46 @@ int main() {
     printf("DMA transfer done.\n");
   }
   
-  if (core_id == 0) {
-    // Benchmark max pooling kernel
-    printf("Starting openMP pooling with static scheduling...\n");
-    mempool_start_benchmark();
-    max_pooling_openmp_static(matrix_A, M, K, S);
-    mempool_stop_benchmark();
-    printf("OpenMP pooling with static scheduling done...\n");
-  } else {
-    while(1) {
-      mempool_wfi();
+  if (STATIC) {
+
+    if (core_id == 0) {
+      // Benchmark max pooling kernel
+      printf("Starting openMP pooling with static scheduling...\n");
       mempool_start_benchmark();
-      run_task(core_id);
+      max_pooling_openmp_static(matrix_A, M, K, S);
       mempool_stop_benchmark();
+      printf("OpenMP pooling with static scheduling done...\n");
+    } else {
+      while(1) {
+        mempool_wfi();
+        mempool_start_benchmark();
+        run_task(core_id);
+        mempool_stop_benchmark();
+      }
     }
+
   }
 
-  mempool_barrier_init(core_id);
+  if (DYNAMIC) {
 
-  if (core_id == 0) {
-    // Benchmark max pooling kernel
-    printf("Starting openMP pooling with dynamic scheduling...\n");
-    mempool_start_benchmark();
-    max_pooling_openmp_dynamic(matrix_A, M, K, S);
-    mempool_stop_benchmark();
-    printf("OpenMP pooling with dynamic scheduling done...\n");
-  } else {
-    while(1) {
-      mempool_wfi();
+    if (core_id == 0) {
+      mempool_barrier_init(core_id);
+      // Benchmark max pooling kernel
+      printf("Starting openMP pooling with dynamic scheduling...\n");
       mempool_start_benchmark();
-      run_task(core_id);
+      max_pooling_openmp_dynamic(matrix_A, M, K, S);
       mempool_stop_benchmark();
+      printf("OpenMP pooling with dynamic scheduling done...\n");
+    } else {
+      while(1) {
+        mempool_barrier_init(core_id);
+        mempool_wfi();
+        mempool_start_benchmark();
+        run_task(core_id);
+        mempool_stop_benchmark();
+      }
     }
+
   }
 
   mempool_barrier_init(core_id);
