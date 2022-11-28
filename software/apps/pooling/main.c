@@ -15,25 +15,24 @@
 #include "runtime.h"
 #include "synchronization.h"
 #include "kernel/pooling.h"
-
-#ifndef UNROLL
-#define UNROLL 1
-#endif
-#ifndef GROUP
-#define GROUP 1
-#endif
+#include "xpulp/pooling_xpulp.h"
 
 #define DMA_ADDRESS (0x40010000)
+
+#define SEQUENTIAL 1
+#define PARALLEL 0
 
 
 // define matrix dimensions
 // B = maxpool(A, K, S) with A[MxM], pooling kernel [KxK] and stride S
-#define K 2
-#define S 1
-#define OUT 4
-// for now hard-coded, but should be OUT_SIZE + K - S
-#define M 5
+#define K 16
+#define S 4
+#define OUT 256
+// for now hard-coded, but should be OUT + K - S
+#define M (OUT + K - S)
 #define SIZE (M*M*sizeof(int32_t))
+
+dump(marker, 3);
 
 int32_t matrix_A[M * M] __attribute__((section(".l1_prio")));
 // TODO: implement writing back of result in double-buffered fashion
@@ -56,23 +55,34 @@ int main() {
     dma_memcpy_blocking(matrix_A, l2_data, SIZE);
     printf("DMA transfer done.\n");
 
-    
-    // Benchmark max pooling kernel
-    printf("Starting sequential pooling...\n");
-    mempool_start_benchmark();
-    max_pooling_sequential(matrix_A, M, K, S);
-    mempool_stop_benchmark();
-    printf("Sequential pooling done...\n");
-    printf("Starting parallel pooling...\n");
+
+    if (SEQUENTIAL) {    
+      // Benchmark max pooling kernel
+      printf("Starting sequential pooling...\n");
+      dump_marker(27021997);
+      mempool_start_benchmark();
+      max_pooling_sequential(matrix_A, M, K, S);
+      mempool_stop_benchmark();
+      dump_marker(14021994);
+      printf("Sequential pooling done...\n");
+    }
+
+    if (PARALLEL) {
+      printf("Starting parallel pooling...\n");
+    }
   }
 
-  // wait until all cores have finished
-  mempool_barrier(num_cores);
-
-  mempool_start_benchmark();
-  max_pooling_parallel(matrix_A, M, K, S, core_id, num_cores);
-  mempool_stop_benchmark();
-
+  if (PARALLEL) {
+    // wait until all cores have finished
+    mempool_barrier(num_cores);
+    dump_marker(27021997);
+    mempool_start_benchmark();
+    max_pooling_parallel(matrix_A, M, K, S, core_id, num_cores);
+    mempool_stop_benchmark();
+    dump_marker(27021997);
+    // wait until all cores have finished
+    mempool_barrier(num_cores);
+  }
 
   // wait until all cores have finished
   mempool_barrier(num_cores);
