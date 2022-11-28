@@ -21,23 +21,26 @@
 #define THREADS 256
 
 // Add defines for broken openMP in mempool
-#define K_END 2
-#define STRIDE 1
-#define OUT 4
+#define K_END 16
+#define STRIDE 4
+
 // for now hard-coded, but should be OUT_SIZE + K - S
-#define M_DIM 5
+#define M_DIM 268
 #define X_START 0
-#define X_END 4 //(M_DIM - K + 1)
+#define X_END 253//(M_DIM - K + 1)
 #define Y_START 0
-#define Y_END 4 //(M_DIM - K + 1)
+#define Y_END 253//(M_DIM - K + 1)
 
 dump(max, 7);
+dump(checksum, 8);
+dump(index, 9);
 // Each core computes the output matrix. No parallelization yet for benchmark reference.
-void max_pooling_sequential(int32_t const *__restrict__ A,
+void static inline max_pooling_sequential(int32_t const *__restrict__ A,
                         uint32_t M, uint32_t K, uint32_t S) {
 
     // Initialize the maximum with the minimum representable value
-    int32_t max;
+    int32_t volatile max;
+    // int32_t checksum = 0;
     
     for (uint32_t x = 0; x < M - K + 1; x += S) {
         for (uint32_t y = 0; y < M - K + 1; y += S) {
@@ -55,10 +58,15 @@ void max_pooling_sequential(int32_t const *__restrict__ A,
             // Matrix below for writing back, but will not be benchmarked atm
             // FIXME: indices not correct yet
             // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
-            printf("Maximum value = %d\n", max);
+            // printf("Maximum value = %d\n", max);
+            // dump_max(max);
+            // checksum += max;
         }
+
+        // dump_index(x);
     }
-  
+
+    // dump_checksum(checksum);
 }
 
 // parallelizing computation over all cores
@@ -66,8 +74,7 @@ void max_pooling_parallel(int32_t const *__restrict__ A,
                         uint32_t M, uint32_t K, uint32_t S, 
                         uint32_t core_id, uint32_t num_cores) {
 
-    // Initialize the maximum with the minimum representable value
-    int32_t max;
+    int32_t volatile max;
     uint32_t x_start = 0;
     uint32_t y_start = core_id * S;
     uint32_t x_end = M - K + 1;
@@ -87,13 +94,13 @@ void max_pooling_parallel(int32_t const *__restrict__ A,
                 }
             }
             // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
-            dump_max(max);
+            // dump_max(max);
         }
     }
   
 }
 
-void max_pooling_openmp_static(int32_t const *__restrict__ A,
+void static inline max_pooling_openmp_static(int32_t const *__restrict__ A,
                         uint32_t M, uint32_t K, uint32_t S) {
 
     // Initialize the maximum with the minimum representable value
@@ -113,13 +120,13 @@ void max_pooling_openmp_static(int32_t const *__restrict__ A,
                 }
             }
             // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
-            dump_max(max);
+            // dump_max(max);
         }
     }
   
 }
 
-void max_pooling_openmp_dynamic(int32_t const *__restrict__ A,
+void static inline max_pooling_openmp_dynamic(int32_t const *__restrict__ A,
                         uint32_t M, uint32_t K, uint32_t S) {
 
     // Initialize the maximum with the minimum representable value
@@ -139,7 +146,7 @@ void max_pooling_openmp_dynamic(int32_t const *__restrict__ A,
                 }
             }
             // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
-            dump_max(max);
+            // dump_max(max);
         }
     }
   
