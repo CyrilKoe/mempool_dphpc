@@ -18,12 +18,37 @@ while getopts :a:h opt; do
   esac
 done
 
+# check if we have a directory to save the results of the tracker
+TRACKER_DIR=tracker_results
+if [ -d "$TRACKER_DIR" ];
+then
+  echo "Directory $TRACKER_DIR already exists."
+else 
+  echo "Creating directory $TRACKER_DIR"
+  mkdir $TRACKER_DIR
+fi
+
+# check if a directory with the name of the current app exists
+APP_DIR=$TRACKER_DIR/${cur_app}
+if [ -d "$APP_DIR" ];
+then
+  echo "Directory $APP_DIR already exists."
+else 
+  echo "Creating directory $APP_DIR"
+  mkdir -p $APP_DIR
+fi
+
+idx=$RANDOM
+file_name="tracker_${cur_app}_${idx}.txt"
+file_path=${APP_DIR}/${file_name}
+
 START_D=$( date "+%d/%m/%y" )
 START_H=$( date "+%H:%M:%S" )
 echo "[MemPool HW] Simulation started at: $START_H on $START_D"
+echo "Saving out put to: ${file_path}"
 start_time=$SECONDS
 # sleep 2
-app=pooling make simcvcs
+app=${cur_app} make simcvcs 2>&1 | tee ${file_path}
 elapsed=$(( SECONDS - start_time ))
 END_D=$( date "+%d/%m/%y" )
 END_H=$( date "+%H:%M:%S" )
