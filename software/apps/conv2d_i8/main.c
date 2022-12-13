@@ -16,8 +16,9 @@
 #define M 32
 #define N 32
 #define KERNEL_N 3
-// #define VERBOSE_IN
-// #define VERBOSE_OUT
+#define __XPULPIMG 1
+#define VERBOSE_IN
+#define VERBOSE_OUT
 
 volatile int8_t in[M * N] __attribute__((section(".l1_prio")));
 volatile int32_t out[M * N] __attribute__((section(".l1_prio")));

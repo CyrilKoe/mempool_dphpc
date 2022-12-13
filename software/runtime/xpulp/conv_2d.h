@@ -15,6 +15,8 @@
 #include "runtime.h"
 #include "synchronization.h"
 
+#define __XPULPIMG
+
 /*
  * 2D Convolution 3x3 ----------------------------------
  * kernel     = conv2d_3x3_unrolled_i8_rv32im
@@ -124,6 +126,7 @@ void conv2d_3x3_unrolled_i8_xpulpv2(
     int8_t const volatile *__restrict__ In_Img,
     int32_t volatile *__restrict__ Out_Img, uint32_t R, uint32_t C,
     uint8_t const volatile *__restrict__ Kernel) {
+      
   v4u coeff_0, coeff_1, coeff_2;
   v4s Img_0, Img_1, Img_2;
   v4s new_data;
@@ -155,7 +158,7 @@ void conv2d_3x3_unrolled_i8_xpulpv2(
 
       Out_Img[t] = S / (int)weight;
 
-      // load a new rod
+      // load a new row
       new_data = (v4s){In_Img[(r + 2) * R + c - 1], In_Img[(r + 2) * R + c],
                        In_Img[(r + 2) * R + c + 1], 0};
       // move the window: move each vector one line down

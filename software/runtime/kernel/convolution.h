@@ -38,7 +38,7 @@ void conv2d_parallel(int32_t const *__restrict__ in, uint32_t in_x,
                         (unsigned int)(n + boundary_x)];
         }
       }
-      out[(unsigned int)j * in_x + (unsigned int)i] = sum / (int)weight;
+      out[(unsigned int)j * in_x + (unsigned int)i] = sum / (int)weight; // Integrated Avg Pooling?
     }
   }
 }
@@ -57,8 +57,7 @@ void conv2d_shifted_parallel(int32_t const *__restrict__ in, uint32_t in_x,
   }
   // TODO implement boundary halo
   // Now we only care about valid entries
-  for (unsigned int i = id; i < in_x - (unsigned int)(2 * boundary_x);
-       i += numThreads) {
+  for (unsigned int i = id; i < in_x - (unsigned int)(2 * boundary_x); i += numThreads) {
     for (unsigned int j = 0; j < in_y - (unsigned int)(2 * boundary_y); j++) {
       sum = 0;
       for (unsigned int m = 0; m < k_y; m++) {
