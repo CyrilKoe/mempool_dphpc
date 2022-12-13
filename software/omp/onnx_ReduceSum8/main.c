@@ -275,6 +275,23 @@ int32_t reduce_sum_parallel4(int8_t const *__restrict__ A,
   return reduced;
 }
 
+int32_t reduce_sum_parallel_atomic(int8_t const *__restrict__ A,
+                             uint32_t num_elements, uint32_t id,
+                             uint32_t numThreads) {
+  reduced_atomic = 0;
+  mempool_barrier(numThreads);
+  int32_t partial_sum = 0;
+  for (uint32_t i = id; i < num_elements; i += numThreads) {
+    for (uint32_t j = 0; j < 16; ++j) {
+      partial_sum += A[i*16+j];
+    }
+  }
+#pragma omp atomic
+  reduced_atomic += partial_sum;
+  mempool_barrier(numThreads);
+  return reduced_atomic;
+}
+
 // SIMD
 int32_t reduce_sum_sequential_simd(int32_t const *__restrict__ A,
                               uint32_t num_elements) {
@@ -514,7 +531,7 @@ int32_t reduce_sum_omp_static(int8_t const *__restrict__ A,
 //   return reduced_atomic;
 // }
 
-int32_t reduce_sum_parallel_simd_omp_atomic(int32_t const *__restrict__ A,
+int32_t reduce_sum_parallel_simd_atomic(int32_t const *__restrict__ A,
                              uint32_t num_elements, uint32_t id,
                              uint32_t numThreads) {
   reduced_atomic = 0;
@@ -654,6 +671,21 @@ int main() {
 #endif
   mempool_barrier(num_cores);
 
+  cycles = mempool_get_timer();
+  mempool_start_benchmark();
+  result = reduce_sum_parallel_atomic(a, M/16, core_id, num_cores);
+  mempool_stop_benchmark();
+  cycles = mempool_get_timer() - cycles;
+
+#ifdef VERBOSE
+  mempool_barrier(num_cores);
+  if (core_id == 0) {
+    printf("Manual Parallel Atomic Result: %d\n", result);
+    printf("Manual Parallel Atomic Duration: %d\n", cycles);
+  }
+#endif
+  mempool_barrier(num_cores);
+
   if (core_id == 0) {
     mempool_wait(4 * num_cores);
     cycles = mempool_get_timer();
@@ -739,15 +771,15 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel_simd_omp_atomic((int32_t *)a, M/16, core_id, num_cores);
+  result = reduce_sum_parallel_simd_atomic((int32_t *)a, M/16, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
 #ifdef VERBOSE
   mempool_barrier(num_cores);
   if (core_id == 0) {
-    printf("Manual Parallel SIMD OMP Atomic Result: %d\n", result);
-    printf("Manual Parallel SIMD OMP Atomic Duration: %d\n", cycles);
+    printf("Manual Parallel SIMD Atomic Result: %d\n", result);
+    printf("Manual Parallel SIMD Atomic Duration: %d\n", cycles);
   }
 #endif
   mempool_barrier(num_cores);
