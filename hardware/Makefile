@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: SHL-0.51
 
 # Author: Matheus Cavalcante, ETH Zurich
-#         Samuel Riedel, ETH Zurich
+#         Samuele Riedel, ETH Zurich
 
 SHELL = /usr/bin/env bash
 ROOT_DIR := $(patsubst %/,%, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
