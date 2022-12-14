@@ -106,6 +106,7 @@ def main():
     min_val = args.min
     max_val = args.max
     seed = args.seed
+    seed = int(seed)
 
     # print('sizes:', sizes, file=sys.stderr)
     # print('variables:', variables, file=sys.stderr)
