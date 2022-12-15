@@ -15,28 +15,28 @@
 #include "runtime.h"
 #include "synchronization.h"
 #include "kernel/pooling.h"
-#include "xpulp/pooling_xpulp.h"
-
 #define DMA_ADDRESS (0x40010000)
 
-#define SEQUENTIAL 1
-#define PARALLEL 0
+#define SEQUENTIAL 0
+#define PARALLEL 1
 
 
 // define matrix dimensions
 // B = maxpool(A, K, S) with A[MxM], pooling kernel [KxK] and stride S
 #define K 16
 #define S 4
-#define OUT 256
+#define OUTx 128
+#define OUTy 128
 // for now hard-coded, but should be OUT + K - S
-#define M (OUT + K - S)
-#define SIZE (M*M*sizeof(int32_t))
+#define Mx (OUTx + K - S)
+#define My (OUTy + K - S)
+#define SIZE (Mx*My*sizeof(int32_t))
 
 dump(marker, 3);
 
-int32_t matrix_A[M * M] __attribute__((section(".l1_prio")));
+int32_t matrix_A[Mx * My] __attribute__((section(".l1_prio")));
 // TODO: implement writing back of result in double-buffered fashion
-// int32_t matrix_B[((int)((M - K)/S) + 1) * ((int)((M - K)/S) + 1)] __attribute__((section(".l1_prio")));
+int32_t matrix_B[((int)((Mx - K)/S) + 1) * ((int)((My - K)/S) + 1)] __attribute__((section(".l1_prio")));
 
 int volatile error __attribute__((section(".l1")));
 
@@ -59,11 +59,17 @@ int main() {
     if (SEQUENTIAL) {    
       // Benchmark max pooling kernel
       printf("Starting sequential pooling...\n");
-      dump_marker(27021997);
+      
+      // COLD CACHE
       mempool_start_benchmark();
-      max_pooling_sequential(matrix_A, M, K, S);
+      max_pooling_sequential(matrix_A, matrix_B, My, K, S);
       mempool_stop_benchmark();
-      dump_marker(14021994);
+
+      // HOT CACHE
+      mempool_start_benchmark();
+      max_pooling_sequential(matrix_A, matrix_B, My, K, S);
+      mempool_stop_benchmark();
+
       printf("Sequential pooling done...\n");
     }
 
@@ -75,13 +81,38 @@ int main() {
   if (PARALLEL) {
     // wait until all cores have finished
     mempool_barrier(num_cores);
-    dump_marker(27021997);
-    mempool_start_benchmark();
-    max_pooling_parallel(matrix_A, M, K, S, core_id, num_cores);
-    mempool_stop_benchmark();
-    dump_marker(27021997);
+    uint32_t core_div = 1;
+
+    // COLD CACHE
+    if(core_id % core_div == 0) {
+      mempool_start_benchmark();
+      max_pooling_parallel(matrix_A, matrix_B, Mx, My, K, S, core_id, num_cores / core_div);
+      mempool_stop_benchmark();
+    }
+
+    // all other cores wait until core 0 has finished
+    if (core_id == 0) {
+      wake_up_all();
+    } 
+
+    mempool_wfi();
+    
     // wait until all cores have finished
     mempool_barrier(num_cores);
+
+    // HOT CACHE
+    if(core_id % core_div == 0) {
+      mempool_start_benchmark();
+      max_pooling_parallel(matrix_A, matrix_B, Mx, My, K, S, core_id, num_cores / core_div);
+      mempool_stop_benchmark();
+    }
+
+    // all other cores wait until core 0 has finished
+    if (core_id == 0) {
+      wake_up_all();
+    }
+
+    mempool_wfi();
   }
 
   // wait until all cores have finished
