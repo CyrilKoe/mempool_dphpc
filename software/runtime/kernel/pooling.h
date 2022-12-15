@@ -35,7 +35,7 @@ dump(max, 7);
 dump(checksum, 8);
 dump(index, 9);
 // Each core computes the output matrix. No parallelization yet for benchmark reference.
-void static inline max_pooling_sequential(int32_t const *__restrict__ A,
+void static inline max_pooling_sequential(int32_t const *__restrict__ A, int32_t *const __restrict__ B,
                         uint32_t M, uint32_t K, uint32_t S) {
 
     // Initialize the maximum with the minimum representable value
@@ -57,7 +57,9 @@ void static inline max_pooling_sequential(int32_t const *__restrict__ A,
             }
             // Matrix below for writing back, but will not be benchmarked atm
             // FIXME: indices not correct yet
-            // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
+            // write back to output matrix
+            B[(int)(x/S) + (int)(y/S) * ((int)((M - K)/S) + 1)] = max;
+
             // printf("Maximum value = %d\n", max);
             // dump_max(max);
             // checksum += max;
@@ -70,35 +72,36 @@ void static inline max_pooling_sequential(int32_t const *__restrict__ A,
 }
 
 // parallelizing computation over all cores
-void max_pooling_parallel(int32_t const *__restrict__ A,
-                        uint32_t M, uint32_t K, uint32_t S, 
+void max_pooling_parallel(int32_t const *__restrict__ A, int32_t *const __restrict__ B,
+                        uint32_t Mx, uint32_t My, uint32_t K, uint32_t S, 
                         uint32_t core_id, uint32_t num_cores) {
 
     int32_t volatile max;
     uint32_t x_start = 0;
     uint32_t y_start = core_id * S;
-    uint32_t x_end = M - K + 1;
-    uint32_t y_end = M - K + 1;
+    uint32_t x_end = Mx - K + 1; // change this to Mx - K + 1
+    uint32_t y_end = My - K + 1;
     
-    for (uint32_t x = x_start; x < x_end; x += S) {
-        for (uint32_t y = y_start; y < y_end; y += S * num_cores) {
+    for (uint32_t y = y_start; y < y_end; y += S * num_cores) {
+        for (uint32_t x = x_start; x < x_end; x += S) {
             // Initialize the maximum with the minimum representable value
             max = -2147483648;
             // Iterate over the pooling kernel to find the maximum
             // value inside a pool
-            for (uint32_t k_x = 0; k_x < K; k_x++) {
-                for (uint32_t k_y = 0; k_y < K; k_y++) {
-                    if (A[y + k_y + (x + k_x) * M] > max) {
-                        max = A[y + k_y + (x + k_x) * M];
+            for (uint32_t k_y = 0; k_y < K; k_y++) {
+                for (uint32_t k_x = 0; k_x < K; k_x++) {
+                    if (A[x + k_x + (y + k_y) * Mx] > max) { // change to x + k_x + (y + k_y) * Mx
+                        max = A[x + k_x + (y + k_y) * Mx]; // change to x + k_x + (y + k_y) * Mx
                     }
                 }
             }
-            // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
+            B[(int)(x/S) + (int)(y/S) * ((int)((Mx - K)/S) + 1)] = max; // change to x/S + y/S * (Mx - K + 1)/S
             // dump_max(max);
         }
     }
   
 }
+
 
 void static inline max_pooling_openmp_static(int32_t const *__restrict__ A,
                         uint32_t M, uint32_t K, uint32_t S) {
