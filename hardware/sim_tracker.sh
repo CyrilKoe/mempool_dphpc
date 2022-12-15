@@ -42,16 +42,32 @@ idx=$RANDOM
 file_name="tracker_${cur_app}_${idx}.txt"
 file_path=${APP_DIR}/${file_name}
 
+if [ -f "$file_path" ];
+then 
+  new_rand=$RANDOM
+  idx = $(( idx + new_rand ))
+  file_name="tracker_${cur_app}_${idx}.txt"
+fi 
+
 START_D=$( date "+%d/%m/%y" )
 START_H=$( date "+%H:%M:%S" )
 echo "[MemPool HW] Simulation started at: $START_H on $START_D"
-echo "Saving out put to: ${file_path}"
+echo "Saving output to: ${file_path}"
 start_time=$SECONDS
 # sleep 2
-app=${cur_app} make simcvcs 2>&1 | tee ${file_path}
+app=${cur_app} make simcvcs #2>&1 | tee ${file_path}
 elapsed=$(( SECONDS - start_time ))
 END_D=$( date "+%d/%m/%y" )
 END_H=$( date "+%H:%M:%S" )
 echo "[MemPool HW] Simulation finished at: $END_H on $END_D"
+eval "echo [MemPool HW] Elapsed time: $(date -ud "@$elapsed" +'%H hr %M min %S sec')"
 
-eval "echo [MemPool HW] Elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
+echo "Generating the traces for run id: ${idx}."
+make trace 2>&1 | tee ${file_path}
+result_id=$(grep -oP '(?<= tee results/).*(?=/)' ${file_path})
+mail -s "[MemPool] Finished run with id ${idx}" vivianep@iis.ee.ethz.ch <<< "File stored in: ${file_path}. Simulation took $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec') . The results are stored in: /result/${result_id}."
+echo "[MemPool HW] Message sent."
+
+# grep name of directory name after */hardware/results/ in the text file
+# and store it in a variable
+
