@@ -60,15 +60,19 @@ int main() {
     index_t *global_indexes = NULL;
     uint32_t global_indexes_len = 0;
 
-    printf("Benchmark %u cores and %u datas (%u per core)\n", 1, l2_data_len,
-           l2_data_len);
+    printf("Benchmark %u cores and %u datas (%u per core)\n", NUM_CORES_BENCH,
+           l2_data_len, (uint32_t)l2_data_len / NUM_CORES_BENCH);
+    printf("Expected global max = %u\n", expected_global_max);
+    printf("Expected indexes len = %u\n", expected_indexes_len);
+
+    mempool_start_benchmark();
 
     // Fill your local vector of data
     for (uint32_t i = 0; i < l2_data_len; ++i) {
       l1_data_flat[i] = l2_data_flat[i];
     }
 
-    printf("All cores are ready to start\n");
+    mempool_stop_benchmark();
     mempool_start_benchmark();
 
     for (uint32_t i = 0; i < l2_data_len; ++i) {
@@ -108,15 +112,18 @@ int main() {
     }
     // Done
     mempool_stop_benchmark();
+    mempool_start_benchmark();
+    // No reduction
+    mempool_stop_benchmark();
 
     // Print all this
     printf("Global max = %i\n", global_max);
     printf("Global indexes len = %u\n", global_indexes_len);
-    index_t *tmp = global_indexes;
-    while (tmp) {
-      printf("-> %u ", tmp->idx);
-      tmp = tmp->next;
-    }
+    // index_t *tmp = global_indexes;
+    // while (tmp) {
+    //  printf("-> %u ", tmp->idx);
+    //  tmp = tmp->next;
+    //}
     printf("\n");
 
     // Todo save global_indexes and free all_global_indexes ?

@@ -93,6 +93,10 @@ for num_data, color in colors: #tot_df['num_data'].unique():
     #if int(point) != 1:
     #    plt.axvline(x = point,linestyle="--",color=color)
 
+colors = [(1, "green"), (8, "orange"), (64, "blue"), (200, "brown")]
+
+for num_cores, color in colors: #tot_df['num_data'].unique():
+
 plt.show()
 assert(0)
 plt.title("Execution time for "+str(colors[0][0]*256)+" int32")

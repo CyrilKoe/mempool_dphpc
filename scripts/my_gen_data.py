@@ -32,7 +32,7 @@ def gen_var(variable, size, min, max, generator):
     val = ','.join(map(str, generator.integers(min, max, size=num)))
 
     argmax = []
-    max_val = int(min)
+    max_val = int(min) - 1
     for idx, i in enumerate(val.split(',')):
         if int(i) > max_val:
             max_val = int(i)
@@ -43,6 +43,8 @@ def gen_var(variable, size, min, max, generator):
     var = f'#include <inttypes.h>\n#define DATA_LEN {num}\n'
     var += f'int32_t {variable}_flat[DATA_LEN] __attribute__((section(".l2"))) = {{ {val} }};\n'
     var += f'uint32_t const {variable}_len = DATA_LEN;\n'
+    var += f'uint32_t const expected_indexes_len = {len(argmax)};\n'
+    var += f'int32_t const expected_global_max = {max_val};\n'
     var += f'//result_max = {max_val}\n// result_len = {len(argmax)} \n// result = {argmax}\n'
     
     offset = 0
