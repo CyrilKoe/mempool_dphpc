@@ -135,5 +135,7 @@ int main() {
       run_task(core_id);
     }
   }
+#else
+  print_benchmark();
 #endif
 }

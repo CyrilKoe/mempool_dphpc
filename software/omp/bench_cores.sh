@@ -1,8 +1,8 @@
-datas_to_bench="2 64 200"
-cores_to_bench="2 4 8 16 32 64 128 256"
+datas_to_bench="4 8 16 32 128"
+cores_to_bench="256"
 progs_to_bench="my_argmax_dyn_3"
 
-for iteration in {1..20}
+for iteration in {1..4}
 do
     for PROG_TO_BENCH in $progs_to_bench
     do
