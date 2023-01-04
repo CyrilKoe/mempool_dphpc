@@ -45,6 +45,16 @@ def gen_var(variable, size, min, max, generator):
     var += f'uint32_t const {variable}_len = DATA_LEN;\n'
     var += f'uint32_t const expected_indexes_len = {len(argmax)};\n'
     var += f'int32_t const expected_global_max = {max_val};\n'
+    var += f'//result_max = {max_val}\n// result_len = {len(argmax)} \n// result = {argmax}\n'
+    
+    offset = 0
+    core = 0
+    page = int(int(num) / 256)
+    while offset != num:
+        local_vector = [int(a) for a in val.split(',')[offset:offset+page]]
+        #var += f'//core : {core} , offset : {offset}  = {str(local_vector)}\n'
+        offset += page
+        core += 1
     return var
 
 
