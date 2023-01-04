@@ -7,7 +7,7 @@ main: main.c ../my_argmax_data/data.h ../my_argmax_data/no_mempool.h
 	${CC} ${CFLAGS} ${LDFLAGS} main.c -o main
 
 dump: main
-	#objdump -d main > main.dump
+	objdump -d main > main.dump
 
 run: main dump
 	#../../../install/llvm/bin/clang-format -i main.c
