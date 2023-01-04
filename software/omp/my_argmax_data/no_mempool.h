@@ -74,14 +74,12 @@ void mempool_stop_benchmark() {
 
 void print_benchmark() {
     measure_t *tmp = measure_list;
-    unsigned int i;
+    unsigned int i = 0;
     while(tmp && tmp->next) {
-        printf("Section %d : %lf (%u -> %u)\n", i++, ((long double) (tmp->end - tmp->start)), tmp->start, tmp->end);
+        printf("Section %u : %lu us (%lu -> %lu)\n", i++, tmp->end - tmp->start, tmp->start, tmp->end);
         tmp = tmp->next;
     }
-    sleep(1);
-    clock_t time = clock();
-    printf("%Lf\n", (long double) time);
+    printf("Cycles per sec %lu\n", CLOCKS_PER_SEC);
     return;
 }
 
