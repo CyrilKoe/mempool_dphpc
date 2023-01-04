@@ -5,4 +5,3 @@ export CMAKE=cmake-3.18.1
 
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
-export PATH=${SCRIPTPATH}/bin:$PATH
