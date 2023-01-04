@@ -18,7 +18,6 @@ void parallel_critical_manual() {
   uint32_t core_id = mempool_get_core_id();
   uint32_t num_cores = mempool_get_core_count();
   uint32_t islocked;
-  
 
   mempool_timer_t cycles = mempool_get_timer();
   mempool_start_benchmark();

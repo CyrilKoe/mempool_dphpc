@@ -10,13 +10,10 @@ RUNTIME_DIR := $(abspath $(SOFTWARE_DIR)/runtime)
 BIN_DIR := $(abspath $(SOFTWARE_DIR)/bin)
 APPS_DIR := $(ROOT_DIR)
 
-NUM_CORES_BENCH ?= NUM_CORES
-
 # OpenMP runtime
 OMP_DIR       ?= $(RUNTIME_DIR)/omp
 RISCV_CCFLAGS += -fopenmp -DNTHREADS=$(num_cores)
 RISCV_CCFLAGS += -I$(OMP_DIR)
-
 
 # This will overwrite the ROOT_DIR variable from the included makefile
 include $(RUNTIME_DIR)/runtime.mk
@@ -28,12 +25,6 @@ BINARIES := $(addprefix $(BIN_DIR)/$(APP_PREFIX),$(APPS))
 
 # Make all applications
 all: $(BINARIES)
-
-
-my_defines:
-	$(eval RISCV_CCFLAGS=${RISCV_CCFLAGS} -I$(SOFTWARE_DIR)/omp/my_argmax_data -DNUM_CORES_BENCH=$(NUM_CORES_BENCH))
-
-my_argmax_dyn_*: my_defines
 
 $(APPS): % : $(BIN_DIR)/$(APP_PREFIX)% $(APPS_DIR)/Makefile $(shell find $(RUNTIME_DIR)/**.{S,c,h,ld} -type f)
 
