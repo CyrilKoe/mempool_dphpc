@@ -16,7 +16,6 @@
 int test_omp_critical() {
   int sum;
   int known_sum, mysum;
-  int num_cores = (int)mempool_get_core_count();
 
   sum = 0;
 #pragma omp parallel
@@ -37,7 +36,7 @@ int test_omp_critical() {
       // printf("Sum: %d, thread_id: %d\n",sum,omp_get_thread_num());
     }
   }
-  known_sum = 99 * 100 / 2 * num_cores;
+  known_sum = 99 * 100 / 2 * NUM_CORES;
   return (known_sum == sum);
 }
 

@@ -24,7 +24,7 @@ void parallel_critical_manual() {
 
   islocked = __atomic_fetch_or(lock, 1, __ATOMIC_SEQ_CST);
   while (islocked) {
-    mempool_wait(num_cores);
+    mempool_wait(NUM_CORES);
     islocked = __atomic_fetch_or(lock, 1, __ATOMIC_SEQ_CST);
   }
 
