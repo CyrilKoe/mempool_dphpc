@@ -377,13 +377,6 @@ module mempool_group
 
   axi_tile_req_t   [NumAXIMastersPerGroup-1:0] axi_mst_req;
   axi_tile_resp_t  [NumAXIMastersPerGroup-1:0] axi_mst_resp;
-  axi_tile_req_t  [NumTilesPerGroup+NumDmasPerGroup-1:0] axi_slv_req;
-  axi_tile_resp_t [NumTilesPerGroup+NumDmasPerGroup-1:0] axi_slv_resp;
-
-  for (genvar i = 0; i < NumDmasPerGroup; i++) begin : gen_axi_slv_vec
-    assign axi_slv_req[i*(NumTilesPerDma+1)+:NumTilesPerDma+1] = {axi_dma_req[i],axi_tile_req[i*NumTilesPerDma+:NumTilesPerDma]};
-    assign {axi_dma_resp[i],axi_tile_resp[i*NumTilesPerDma+:NumTilesPerDma]} = axi_slv_resp[i*(NumTilesPerDma+1)+:NumTilesPerDma+1];
-  end : gen_axi_slv_vec
 
   axi_hier_interco #(
     .NumSlvPorts    (NumTilesPerGroup+NumDmasPerGroup),
@@ -403,14 +396,14 @@ module mempool_group
     .mst_req_t      (axi_tile_req_t                  ),
     .mst_resp_t     (axi_tile_resp_t                 )
   ) i_axi_interco (
-    .clk_i           (clk_i          ),
-    .rst_ni          (rst_ni         ),
-    .test_i          (1'b0           ),
-    .ro_cache_ctrl_i (ro_cache_ctrl_q),
-    .slv_req_i       (axi_slv_req    ),
-    .slv_resp_o      (axi_slv_resp   ),
-    .mst_req_o       (axi_mst_req    ),
-    .mst_resp_i      (axi_mst_resp   )
+    .clk_i           (clk_i                       ),
+    .rst_ni          (rst_ni                      ),
+    .test_i          (1'b0                        ),
+    .ro_cache_ctrl_i (ro_cache_ctrl_q             ),
+    .slv_req_i       ({axi_dma_req,axi_tile_req}  ),
+    .slv_resp_o      ({axi_dma_resp,axi_tile_resp}),
+    .mst_req_o       (axi_mst_req                 ),
+    .mst_resp_i      (axi_mst_resp                )
   );
 
   for (genvar m = 0; m < NumAXIMastersPerGroup; m++) begin: gen_axi_group_cuts
@@ -465,7 +458,7 @@ module mempool_group
     .DmaRegionWidth (NumBanksPerGroup*4/NumDmasPerGroup),
     .DmaRegionStart (TCDMBaseAddr                      ),
     .DmaRegionEnd   (TCDMBaseAddr+TCDMSize             ),
-    .TransFifoDepth (8                                 ),
+    .TransFifoDepth (4                                 ),
     .burst_req_t    (dma_req_t                         ),
     .meta_t         (dma_meta_t                        )
   ) i_idma_distributed_midend (
@@ -517,7 +510,7 @@ module mempool_group
       .IdWidth         (AxiTileIdWidth ),
       .AxReqFifoDepth  (2              ),
       .TransFifoDepth  (1              ),
-      .BufferDepth     (4              ),
+      .BufferDepth     (3              ),
       .axi_req_t       (axi_tile_req_t ),
       .axi_res_t       (axi_tile_resp_t),
       .burst_req_t     (dma_req_t      ),
