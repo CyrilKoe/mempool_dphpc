@@ -27,14 +27,16 @@
 // B = maxpool(A, K, S) with A[MxM], pooling kernel [KxK] and stride S
 #define K 16
 #define S 4
-#define OUT 256
-// for now hard-coded, but should be OUT_SIZE + K - S
-#define M (OUT + K - S)
-#define SIZE (M*M*sizeof(int32_t))
+#define OUTx 16
+#define OUTy 16
+// for now hard-coded, but should be OUT + K - S
+#define Mx ((OUTx - 1) * S + K) 
+#define My ((OUTx - 1) * S + K) 
+#define SIZE (Mx*My*sizeof(int32_t))
 
-int32_t matrix_A[M * M] __attribute__((section(".l1_prio")));
+int32_t matrix_A[Mx * My] __attribute__((section(".l1_prio")));
 // TODO: implement writing back of result in double-buffered fashion
-// int32_t matrix_B[((int)((M - K)/S) + 1) * ((int)((M - K)/S) + 1)] __attribute__((section(".l1_prio")));
+int32_t matrix_B[((int)((Mx - K)/S) + 1) * ((int)((My - K)/S) + 1)] __attribute__((section(".l1_prio")));
 
 int volatile error __attribute__((section(".l1")));
 
@@ -61,7 +63,7 @@ int main() {
       // Benchmark max pooling kernel
       printf("Starting openMP pooling with static scheduling...\n");
       mempool_start_benchmark();
-      max_pooling_openmp_static(matrix_A, M, K, S);
+      max_pooling_openmp_static(matrix_A, matrix_B, Mx, K, S);
       mempool_stop_benchmark();
       printf("OpenMP pooling with static scheduling done...\n");
     } else {
@@ -82,7 +84,7 @@ int main() {
       // Benchmark max pooling kernel
       printf("Starting openMP pooling with dynamic scheduling...\n");
       mempool_start_benchmark();
-      max_pooling_openmp_dynamic(matrix_A, M, K, S);
+      max_pooling_openmp_dynamic(matrix_A, matrix_B, Mx, K, S);
       mempool_stop_benchmark();
       printf("OpenMP pooling with dynamic scheduling done...\n");
     } else {

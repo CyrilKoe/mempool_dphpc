@@ -32,16 +32,20 @@
 
 dump(maxp, 7);
 
-void pooling_unrolled_parallel_i8_rv32im(int8_t const *__restrict__ A,
-                        uint32_t M, uint32_t K, uint32_t S, 
+void pooling_unrolled_parallel_i8_rv32im(int8_t const *__restrict__ A, int32_t *const __restrict__ B,
+                        uint32_t Mx, uint32_t My, uint32_t K, uint32_t S, 
                         uint32_t core_id, uint32_t num_cores) {
                             
     
     
-    uint32_t x_start = 0;
-    uint32_t y_start = core_id * S;
-    uint32_t x_end = M - K + 1;
-    uint32_t y_end = M - K + 1;
+    const uint32_t x_split = 4;
+    uint32_t core_id_x = core_id / x_split;
+    uint32_t core_id_y = core_id % x_split;
+    uint32_t x_start = core_id_x * S;
+    uint32_t y_start = core_id_y * S;
+    uint32_t x_end = Mx - K + 1; 
+    uint32_t y_end = My - K + 1;
+
     v4s max_vec0;
     v4s max_vec1;
     v4s max_vec2;
@@ -54,16 +58,16 @@ void pooling_unrolled_parallel_i8_rv32im(int8_t const *__restrict__ A,
 
     int8_t max;
 
-    for (uint32_t x = x_start; x < x_end; x += S) {
-        for (uint32_t y = y_start; y < y_end; y += S * num_cores) {
+    for (uint32_t y = y_start; y < y_end; y += S * x_split) {
+        for (uint32_t x = x_start; x < x_end; x += S * num_cores / x_split) {
             // Initialize the maximum with the minimum representable value
-            max_vec0 = (v4s)((int32_t*)A)[((x + 0 * 4 + 0) + (y + 0) * M)/4];   
+            max_vec0 = (v4s)((int32_t*)A)[((x + 0 * 4 + 0) + (y + 0) * Mx)/4];   
 
-            max_vec1 = (v4s)((int32_t*)A)[((x + 1 * 4 + 0) + (y + 0) * M)/4]; 
+            max_vec1 = (v4s)((int32_t*)A)[((x + 1 * 4 + 0) + (y + 0) * Mx)/4]; 
 
-            max_vec2 = (v4s)((int32_t*)A)[((x + 2 * 4 + 0) + (y + 0) * M)/4]; 
+            max_vec2 = (v4s)((int32_t*)A)[((x + 2 * 4 + 0) + (y + 0) * Mx)/4]; 
 
-            max_vec3 = (v4s)((int32_t*)A)[((x + 3 * 4 + 0) + (y + 0) * M)/4]; 
+            max_vec3 = (v4s)((int32_t*)A)[((x + 3 * 4 + 0) + (y + 0) * Mx)/4]; 
 
             // Iterate over the pooling kernel to find the maximum
             // value inside a pool
@@ -73,13 +77,13 @@ void pooling_unrolled_parallel_i8_rv32im(int8_t const *__restrict__ A,
                     //     max = A[y + k_y + (x + k_x) * M];
                     // }
                     
-                    a0 = (v4s)((int32_t*)A)[((x + 0 * 4 + k_x) + (y + k_y) * M) / 4];
+                    a0 = (v4s)((int32_t*)A)[((x + 0 * 4 + k_x) + (y + k_y) * Mx) / 4];
 
-                    a1 = (v4s)((int32_t*)A)[((x + 1 * 4 + k_x) + (y + k_y) * M) / 4];
+                    a1 = (v4s)((int32_t*)A)[((x + 1 * 4 + k_x) + (y + k_y) * Mx) / 4];
 
-                    a2 = (v4s)((int32_t*)A)[((x + 2 * 4 + k_x) + (y + k_y) * M) / 4];
+                    a2 = (v4s)((int32_t*)A)[((x + 2 * 4 + k_x) + (y + k_y) * Mx) / 4];
 
-                    a3 = (v4s)((int32_t*)A)[((x + 3 * 4 + k_x) + (y + k_y) * M) / 4];
+                    a3 = (v4s)((int32_t*)A)[((x + 3 * 4 + k_x) + (y + k_y) * Mx) / 4];
 
                     max_vec0 = __builtin_pulp_max4(a0,max_vec0);
                     max_vec1 = __builtin_pulp_max4(a1,max_vec1);
@@ -109,7 +113,7 @@ void pooling_unrolled_parallel_i8_rv32im(int8_t const *__restrict__ A,
 
             // dump_maxp(max);
 
-            // B[int(x/S) + int(y/S) * (int((M - K)/S) + 1)] = max;
+            B[(int)(x/S) + (int)(y/S) * ((int)((Mx - K)/S) + 1)] = max;
         }
     }
 }
