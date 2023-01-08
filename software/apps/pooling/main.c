@@ -17,8 +17,8 @@
 #include "kernel/pooling.h"
 #define DMA_ADDRESS (0x40010000)
 
-#define SEQUENTIAL 1
-#define PARALLEL 0
+#define SEQUENTIAL 0
+#define PARALLEL 1
 
 
 // define matrix dimensions
