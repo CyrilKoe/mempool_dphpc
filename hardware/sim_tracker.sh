@@ -56,6 +56,7 @@ echo "Saving output to: ${file_path}"
 start_time=$SECONDS
 # sleep 2
 app=${cur_app} make simcvcs #2>&1 | tee ${file_path}
+# app=${cur_app} make sim
 elapsed=$(( SECONDS - start_time ))
 END_D=$( date "+%d/%m/%y" )
 END_H=$( date "+%H:%M:%S" )
@@ -65,7 +66,10 @@ eval "echo [MemPool HW] Elapsed time: $(date -ud "@$elapsed" +'%H hr %M min %S s
 echo "Generating the traces for run id: ${idx}."
 make trace 2>&1 | tee ${file_path}
 result_id=$(grep -oP '(?<= tee results/).*(?=/)' ${file_path})
-mail -s "[MemPool] Finished run with id ${idx}" vivianep@iis.ee.ethz.ch <<< "File stored in: ${file_path}. Simulation took $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec') . The results are stored in: /result/${result_id}."
+days=$(date -ud "@$elapsed" +'%S') #$( date -ud "@$elapsed" + '$((%s/3600/24)))
+eval days=$((${days}/3600/24))
+echo ${days}
+mail -s "[MemPool] Finished run with id ${idx}" vivianep@iis.ee.ethz.ch <<< "File stored in: ${file_path}. Simulation took ${days} days $(date -ud "@$elapsed" +'%H hr %M min %S sec') . The results are stored in: /result/${result_id}."
 echo "[MemPool HW] Message sent."
 
 # grep name of directory name after */hardware/results/ in the text file
