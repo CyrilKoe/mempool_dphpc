@@ -26,15 +26,15 @@ def gen_header(command):
     return header
 
 
-def gen_var(variable, size, min, max, generator):
+def gen_var(variable, size, dtype, min, max, generator):
     dim = [int(x) for x in re.findall(r'\d+', size)]
     num = np.prod(dim)
     val = ','.join(map(str, generator.integers(min, max, size=num)))
-    var = f'int32_t {variable}_flat[{num}] = {{ {val} }};\n'
-    var += f'int32_t (*{variable})'
+    var = f'{dtype} {variable}_flat[{num}] = {{ {val} }};\n'
+    var += f'{dtype} (*{variable})'
     for i in dim[1:]:
         var += f'[{i}]'
-    var += ' = (int32_t (*)'
+    var += f' = ({dtype} (*)'
     for i in dim[1:]:
         var += f'[{i}]'
     var += f'){variable}_flat;\n'
@@ -50,6 +50,12 @@ def main():
         nargs='+',
         action='append',
         help='Size of generated variable'
+    )
+    parser.add_argument(
+        '--dtype',
+        nargs='+',
+        default='int32_t',
+        help='Data type'
     )
     parser.add_argument(
         '-v',
@@ -85,6 +91,7 @@ def main():
     args = parser.parse_args()
 
     sizes = args.size
+    dtype = args.dtype
     variables = args.variable
     file = args.output[0]
     clang_format = args.clangformat
@@ -103,7 +110,7 @@ def main():
     with open(file, "w") as f:
         f.write(gen_header(' '.join(sys.argv[1:])))
         for variable, size in zip(variables, sizes):
-            var = gen_var(variable[0], size[0], min_val, max_val, generator)
+            var = gen_var(variable[0], size[0], dtype[0], min_val, max_val, generator)
             f.write(var)
 
     # Format the final file
