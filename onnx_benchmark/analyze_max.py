@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 
 ext = ('.csv')
-path = 'ReduceSum_new'
+path = 'reduceMax_1D'
 os.chdir(path)
 main_path = os.getcwd()
 # print(main_path)
@@ -44,4 +44,4 @@ for folders in os.listdir(main_path):
             df = pd.concat([df, df_tmp], axis=1)
     os.chdir(main_path)
 print(df)
-df.to_csv('../ReduceSum_new.csv')
+df.to_csv('../reduceMax_1D.csv')
