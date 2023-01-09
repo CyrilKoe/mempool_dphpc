@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include "encoding.h"
-#include "kernel/mat_mul.h"
 #include "libgomp.h"
 #include "printf.h"
 #include "runtime.h"
@@ -14,7 +13,7 @@
 
 // Define Vector dimensions:
 // C = AB with A=[Mx1], B=[Mx1]
-#define M (IS * NUM_CORES) // IS_max = 512
+#define M (IS * NUM_CORES) // IS_min = 512
 // Specify how the vectors A and B should be initialized
 // The entries will follow this format:
 // a(i) = A_a*i + A_b
@@ -26,14 +25,15 @@
 // Note: To keep the code simpler, we use indices that go from 0 to N-1 instead
 // of 1 to N as the mathematicians do. Hence, for A, i=[0,M-1].
 #define A_a 1
-#define A_b 10
+#define A_b 128
 // Enable verbose printing
 #define VERBOSE
+#define MAX32 2147483647
 
 int32_t volatile init __attribute__((section(".l2"))) = 0;
 int32_t a[M] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
-int32_t Partial_sums[NUM_CORES] __attribute__((section(".l1")))
+int32_t Partial_mins[NUM_CORES] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 int32_t reduced4[4] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
@@ -47,7 +47,7 @@ void init_vector(int32_t *vector, uint32_t num_elements, int32_t a, int32_t b,
                  uint32_t core_id, uint32_t num_cores) {
   // Parallelize over rows
   for (uint32_t i = core_id; i < num_elements; i += num_cores) {
-    vector[i] = a * (int32_t)i + b;
+    vector[i] = - a * (int32_t)i + b;
   }
 }
 
@@ -59,31 +59,34 @@ void print_vector(int32_t const *vector, uint32_t num_elements) {
   }
 }
 
-int32_t reduce_sum_sequential(int32_t const *__restrict__ A,
+int32_t reduce_min_sequential(int32_t const *__restrict__ A,
                               uint32_t num_elements) {
   uint32_t i;
-  int32_t reduced = 0;
+  int32_t reduced = MAX32;
   for (i = 0; i < num_elements; i++) {
-    reduced += A[i];
+    if (A[i]<reduced)
+      reduced = A[i];
   }
   return reduced;
 }
 
-int32_t reduce_sum_parallel1(int32_t const *__restrict__ A,
+int32_t reduce_min_parallel1(int32_t const *__restrict__ A,
                               uint32_t num_elements, uint32_t id,
                               uint32_t numThreads) {
 
-  Partial_sums[id] = 0;
-  int32_t reduced = 0;
+  Partial_mins[id] = MAX32;
+  int32_t reduced = MAX32;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
+      if (A[i*4+j]<Partial_mins[id])
+        Partial_mins[id] = A[i*4+j];
     }
   }
   mempool_barrier(numThreads);
   if (id == 0) {
     for (uint32_t i = 0; i < numThreads; i += 1) {
-      reduced += Partial_sums[i];
+      if (Partial_mins[i] < reduced)
+        reduced = Partial_mins[i];
     }
   }
   mempool_barrier(numThreads);
@@ -91,227 +94,260 @@ int32_t reduce_sum_parallel1(int32_t const *__restrict__ A,
 }
 
 // does not make sense to me since memory layout is not considered
-int32_t reduce_sum_parallel2(int32_t const *__restrict__ A,
+int32_t reduce_min_parallel2(int32_t const *__restrict__ A,
                               uint32_t num_elements, uint32_t id,
                               uint32_t numThreads) {
 
-  Partial_sums[id] = 0;
-  int32_t reduced = 0;
+  Partial_mins[id] = MAX32;
+  int32_t reduced = MAX32;
   for (uint32_t i = id * num_elements / numThreads;
        i < (id + 1) * num_elements / numThreads; i += 1) {
-    Partial_sums[id] += A[i];
+    if (A[i] < Partial_mins[id])
+      Partial_mins[id] = A[i];
   }
   mempool_barrier(numThreads);
   if (id == 0) {
     for (uint32_t i = 0; i < numThreads; i += 1) {
-      reduced += Partial_sums[i];
+      if (Partial_mins[i] < reduced)
+        reduced = Partial_mins[i];
     }
   }
   mempool_barrier(numThreads);
   return reduced;
 }
 
-int32_t reduce_sum_parallel3(int32_t const *__restrict__ A,
+int32_t reduce_min_parallel3(int32_t const *__restrict__ A,
                               uint32_t num_elements, uint32_t id,
                               uint32_t numThreads) {
 
-  Partial_sums[id] = 0;
-  int32_t reduced = 0;
+  Partial_mins[id] = MAX32;
+  int32_t reduced = MAX32;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
+      if (A[i*4+j]<Partial_mins[id])
+        Partial_mins[id] = A[i*4+j];
     }
   }
   mempool_barrier(numThreads);
   if (id == 0) {
-    reduced4[0] = 0;
+    reduced4[0] = MAX32;
     for (uint32_t i = id; i < 64; i += 1) {
-      reduced4[0] += Partial_sums[i];
+      if (Partial_mins[i] < reduced4[0])
+        reduced4[0] = Partial_mins[i];
     }
   }
   if (id == 16) {
-    reduced4[1] = 0;
+    reduced4[1] = MAX32;
     for (uint32_t i = 64; i < 128; i += 1) {
-      reduced4[1] += Partial_sums[i];
+      if (Partial_mins[i] < reduced4[1])
+        reduced4[1] = Partial_mins[i];
     }
   }
   if (id == 32) {
-    reduced4[2] = 0;
+    reduced4[2] = MAX32;
     for (uint32_t i = 128; i < 192; i += 1) {
-      reduced4[2] += Partial_sums[i];
+      if (Partial_mins[i] < reduced4[2])
+        reduced4[2] = Partial_mins[i];
     }
   }
   if (id == 48) {
-    reduced4[3] = 0;
+    reduced4[3] = MAX32;
     for (uint32_t i = 192; i < 256; i += 1) {
-      reduced4[3] += Partial_sums[i];
+      if (Partial_mins[i] < reduced4[3])
+        reduced4[3] = Partial_mins[i];
     }
   }
   mempool_barrier(numThreads);
   if (id == 0) {
     for (uint32_t i = 0; i < 4; i += 1) {
-      reduced += reduced4[i];
+      if (reduced4[i] < reduced)
+        reduced = reduced4[i];
     }
   }
   mempool_barrier(numThreads);
   return reduced;
 }
 
-int32_t reduce_sum_parallel4(int32_t const *__restrict__ A,
+int32_t reduce_min_parallel4(int32_t const *__restrict__ A,
                               uint32_t num_elements, uint32_t id,
                               uint32_t numThreads) {
 
-  Partial_sums[id] = 0;
-  int32_t reduced = 0;
+  Partial_mins[id] = MAX32;
+  int32_t reduced = MAX32;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
+      if (A[i*4+j]<Partial_mins[id])
+        Partial_mins[id] = A[i*4+j];
     }
   }
   mempool_barrier(numThreads);
   if (id == 0) {
-    reduced16[0] = 0;
+    reduced16[0] = MAX32;
     for (uint32_t j = 0; j < 16; j += 1) {
-      reduced16[0] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[0])
+        reduced16[0] = Partial_mins[j];
     }
   }
   if (id == 4) {
-    reduced16[1] = 0;
+    reduced16[1] = MAX32;
     for (uint32_t j = 16; j < 32; j += 1) {
-      reduced16[1] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[1])
+        reduced16[1] = Partial_mins[j];
     }
   }
   if (id == 8) {
-    reduced16[2] = 0;
+    reduced16[2] = MAX32;
     for (uint32_t j = 32; j < 48; j += 1) {
-      reduced16[2] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[2])
+        reduced16[2] = Partial_mins[j];
     }
   }
   if (id == 12) {
-    reduced16[3] = 0;
+    reduced16[3] = MAX32;
     for (uint32_t j = 48; j < 64; j += 1) {
-      reduced16[3] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[3])
+        reduced16[3] = Partial_mins[j];
     }
   }
   if (id == 16) {
-    reduced16[4] = 0;
+    reduced16[4] = MAX32;
     for (uint32_t j = 64; j < 80; j += 1) {
-      reduced16[4] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[4])
+        reduced16[4] = Partial_mins[j];
     }
   }
   if (id == 20) {
-    reduced16[5] = 0;
+    reduced16[5] = MAX32;
     for (uint32_t j = 80; j < 96; j += 1) {
-      reduced16[5] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[5])
+        reduced16[5] = Partial_mins[j];
     }
   }
   if (id == 24) {
-    reduced16[6] = 0;
+    reduced16[6] = MAX32;
     for (uint32_t j = 96; j < 112; j += 1) {
-      reduced16[6] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[6])
+        reduced16[6] = Partial_mins[j];
     }
   }
   if (id == 28) {
-    reduced16[7] = 0;
+    reduced16[7] = MAX32;
     for (uint32_t j = 112; j < 128; j += 1) {
-      reduced16[7] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[7])
+        reduced16[7] = Partial_mins[j];
     }
   }
   if (id == 32) {
-    reduced16[8] = 0;
+    reduced16[8] = MAX32;
     for (uint32_t j = 128; j < 144; j += 1) {
-      reduced16[8] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[8])
+        reduced16[8] = Partial_mins[j];
     }
   }
   if (id == 36) {
-    reduced16[9] = 0;
+    reduced16[9] = MAX32;
     for (uint32_t j = 144; j < 160; j += 1) {
-      reduced16[9] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[9])
+        reduced16[9] = Partial_mins[j];
     }
   }
   if (id == 40) {
-    reduced16[10] = 0;
+    reduced16[10] = MAX32;
     for (uint32_t j = 160; j < 176; j += 1) {
-      reduced16[10] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[10])
+        reduced16[10] = Partial_mins[j];
     }
   }
   if (id == 44) {
-    reduced16[11] = 0;
+    reduced16[11] = MAX32;
     for (uint32_t j = 176; j < 192; j += 1) {
-      reduced16[11] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[11])
+        reduced16[11] = Partial_mins[j];
     }
   }
   if (id == 48) {
-    reduced16[12] = 0;
+    reduced16[12] = MAX32;
     for (uint32_t j = 192; j < 208; j += 1) {
-      reduced16[12] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[12])
+        reduced16[12] = Partial_mins[j];
     }
   }
   if (id == 52) {
-    reduced16[13] = 0;
+    reduced16[13] = MAX32;
     for (uint32_t j = 208; j < 224; j += 1) {
-      reduced16[13] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[13])
+        reduced16[13] = Partial_mins[j];
     }
   }
   if (id == 56) {
-    reduced16[14] = 0;
+    reduced16[14] = MAX32;
     for (uint32_t j = 224; j < 240; j += 1) {
-      reduced16[14] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[14])
+        reduced16[14] = Partial_mins[j];
     }
   }
   if (id == 60) {
-    reduced16[15] = 0;
+    reduced16[15] = MAX32;
     for (uint32_t j = 240; j < 256; j += 1) {
-      reduced16[15] += Partial_sums[j];
+      if (Partial_mins[j] < reduced16[15])
+        reduced16[15] = Partial_mins[j];
     }
   }
   mempool_barrier(numThreads);
   if (id == 0) {
     for (uint32_t i = 0; i < 16; i += 1) {
-      reduced += reduced16[i];
+      if (reduced16[i] < reduced)
+        reduced = reduced16[i];
     }
   }
   mempool_barrier(numThreads);
   return reduced;
 }
 
-int32_t reduce_sum_parallel_atomic(int32_t const *__restrict__ A,
-                                    uint32_t num_elements, uint32_t id,
+int32_t reduce_min_omp_parallel_critical(int32_t const *__restrict__ A,
+                                    uint32_t num_elements,
                                     uint32_t numThreads) {
 
-  reduced_atomic = 0;
-  mempool_barrier(numThreads);
-  int32_t partial_sum = 0;
-  for (uint32_t i = id; i < num_elements; i += numThreads) {
+  reduced_atomic = MAX32;
+#pragma omp parallel num_threads(numThreads)
+{
+  int32_t partial_min = MAX32;
+  for (uint32_t i = omp_get_thread_num(); i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      partial_sum += A[i*4+j];
+      if (A[i*4+j] < partial_min)
+        partial_min = A[i*4+j];
     }
   }
-#pragma omp atomic
-  reduced_atomic += partial_sum;
-  mempool_barrier(numThreads);
+#pragma omp critical 
+{
+  if (partial_min < reduced_atomic)
+    reduced_atomic = partial_min;
+}
+}
   return reduced_atomic;
 }
 
-int32_t reduce_sum_omp_static(int32_t const *__restrict__ A,
+int32_t reduce_min_omp_static(int32_t const *__restrict__ A,
                               uint32_t num_elements) {
   uint32_t i;
-  int32_t reduced = 0;
-#pragma omp parallel for reduction(+ : reduced)
+  int32_t reduced = MAX32;
+#pragma omp parallel for reduction(min : reduced)
   for (i = 0; i < num_elements; i++) {
-    reduced += A[i];
+    if (A[i] < reduced)
+      reduced = A[i];
   }
   return reduced;
 }
 
-int32_t reduce_sum_omp_dynamic(int32_t const *__restrict__ A,
+int32_t reduce_min_omp_dynamic(int32_t const *__restrict__ A,
                                uint32_t chunksize) {
   uint32_t i;
-  int32_t reduced = 0;
+  int32_t reduced = MAX32;
   // printf("num_elements %d\n", num_elements);
-#pragma omp parallel for schedule(dynamic, chunksize) reduction(+ : reduced)
+#pragma omp parallel for schedule(dynamic, chunksize) reduction(min : reduced)
   for (i = 0; i < M; i++) {
-    reduced += A[i];
+    if (A[i] < reduced)
+      reduced = A[i];
   }
   return reduced;
 }
@@ -348,7 +384,7 @@ int main() {
     mempool_wait(4 * num_cores);
     cycles = mempool_get_timer();
     mempool_start_benchmark();
-    result = reduce_sum_sequential(a, M);
+    result = reduce_min_sequential(a, M);
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
   }
@@ -369,7 +405,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel1(a, M/4, core_id, num_cores);
+  result = reduce_min_parallel1(a, M/4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -384,7 +420,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel2(a, M, core_id, num_cores);
+  result = reduce_min_parallel2(a, M, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -399,7 +435,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel3(a, M/4, core_id, num_cores);
+  result = reduce_min_parallel3(a, M/4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -414,7 +450,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel4(a, M/4, core_id, num_cores);
+  result = reduce_min_parallel4(a, M/4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -427,30 +463,24 @@ int main() {
 #endif
   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel_atomic(a, M/4, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
-
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel Atomic Result: %d\n", result);
-    printf("Manual Parallel Atomic Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
-
   /*  OPENMP IMPLEMENTATION  */
   int32_t omp_result;
 
   if (core_id == 0) {
     mempool_wait(4 * num_cores);
 
+    // cycles = mempool_get_timer();
+    // mempool_start_benchmark();
+    // result = reduce_min_omp_parallel_critical(a, M/4, num_cores);
+    // mempool_stop_benchmark();
+    // cycles = mempool_get_timer() - cycles;
+
+    // printf("OMP Parallel Critical Result: %d\n", result);
+    // printf("OMP Parallel Critical Duration: %d\n", cycles);
+
     cycles = mempool_get_timer();
     mempool_start_benchmark();
-    omp_result = reduce_sum_omp_static(a, M);
+    omp_result = reduce_min_omp_static(a, M);
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
 
@@ -461,7 +491,7 @@ int main() {
 
     // cycles = mempool_get_timer();
     // mempool_start_benchmark();
-    // omp_result = reduce_sum_omp_dynamic(a, IS);
+    // omp_result = reduce_min_omp_dynamic(a, IS);
     // mempool_stop_benchmark();
     // cycles = mempool_get_timer() - cycles;
 
@@ -472,7 +502,7 @@ int main() {
 
     // cycles = mempool_get_timer();
     // mempool_start_benchmark();
-    // omp_result = reduce_sum_omp_dynamic(a, 16);
+    // omp_result = reduce_min_omp_dynamic(a, 16);
     // mempool_stop_benchmark();
     // cycles = mempool_get_timer() - cycles;
 

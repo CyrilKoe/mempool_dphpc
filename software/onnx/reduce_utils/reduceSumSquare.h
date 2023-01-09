@@ -9,16 +9,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
-int32_t reduce_sum_sequential(int32_t const *__restrict__ A,
+int32_t reduce_SumSquare_omp_static(int32_t const *__restrict__ A,
                               uint32_t num_elements) {
+  uint32_t i;
   int32_t reduced = 0;
-  for (uint32_t i = 0; i < num_elements; i++) {
-    reduced += A[i];
+#pragma omp parallel for reduction(+ : reduced)
+  for (i = 0; i < num_elements; i++) {
+    reduced += A[i]*A[i];
   }
   return reduced;
 }
 
-int32_t reduce_sum_all(int32_t const *__restrict__ data,
+int32_t reduce_SumSquare_all(int32_t const *__restrict__ data,
                           uint32_t *__restrict__ shape, 
                           uint32_t rank,
                           int32_t *__restrict__ reduced) {
@@ -26,11 +28,11 @@ int32_t reduce_sum_all(int32_t const *__restrict__ data,
   for (uint32_t i = 0; i < rank; i++){
     num_elements *= shape[i];
   }
-  *reduced = reduce_sum_sequential(data, num_elements);
+  *reduced = reduce_SumSquare_omp_static(data, num_elements);
   return 0;
 }
 
-int32_t reduce_sum_4d_1ax(int32_t const *__restrict__ data,
+int32_t reduce_SumSquare_4d_1ax(int32_t const *__restrict__ data,
                           uint32_t *__restrict__ shape, 
                           uint32_t ax,
                           int32_t *__restrict__ reduced) {
@@ -95,14 +97,14 @@ int32_t reduce_sum_4d_1ax(int32_t const *__restrict__ data,
     return 1;
   }
 
-#pragma omp parallel for collapse(3) num_threads(NUM_CORES)
+#pragma omp parallel for collapse(3) num_threads(NTHREADS)
   for (uint32_t i0 = 0; i0 < R0; i0++){
     for (uint32_t i1 = 0; i1 < R1; i1++){
       for (uint32_t i2 = 0; i2 < R2; i2++){
         reduced[i0*I0 + i1*I1 + i2] = 0;
         // printf("core_id = %d\n", mempool_get_core_id());
         for (uint32_t i3 = 0; i3 < R3; i3++){
-          reduced[i0*I0 + i1*I1 + i2] += data[i0*B0 + i1*B1 + i2*B2 + i3*B3];
+          reduced[i0*I0 + i1*I1 + i2] += data[i0*B0 + i1*B1 + i2*B2 + i3*B3]*data[i0*B0 + i1*B1 + i2*B2 + i3*B3];
         }
       }
     }
@@ -110,7 +112,7 @@ int32_t reduce_sum_4d_1ax(int32_t const *__restrict__ data,
   return 0;
 }
 
-int32_t reduce_sum_4d_2ax(int32_t const *__restrict__ data,
+int32_t reduce_SumSquare_4d_2ax(int32_t const *__restrict__ data,
                           uint32_t *__restrict__ shape, 
                           uint32_t *__restrict__ ax,
                           int32_t *__restrict__ reduced) {
@@ -130,12 +132,12 @@ int32_t reduce_sum_4d_2ax(int32_t const *__restrict__ data,
 
   int32_t inter_reduced[inter_size];
 
-  error = reduce_sum_4d_1ax(data, shape, ax[0], inter_reduced);
-  error = reduce_sum_4d_1ax(inter_reduced, inter_shape, ax[1], reduced);
+  error = reduce_SumSquare_4d_1ax(data, shape, ax[0], inter_reduced);
+  error = reduce_SumSquare_4d_1ax(inter_reduced, inter_shape, ax[1], reduced);
   return error;
 }
 
-int32_t reduce_sum_4d_3ax(int32_t const *__restrict__ data,
+int32_t reduce_SumSquare_4d_3ax(int32_t const *__restrict__ data,
                           uint32_t *__restrict__ shape, 
                           uint32_t *__restrict__ ax,
                           int32_t *__restrict__ reduced) {
@@ -160,9 +162,9 @@ int32_t reduce_sum_4d_3ax(int32_t const *__restrict__ data,
   int32_t inter1_reduced[inter1_size];
   int32_t inter2_reduced[inter2_size];
 
-  error = reduce_sum_4d_1ax(data, shape, ax[0], inter1_reduced);
-  error = reduce_sum_4d_1ax(inter1_reduced, inter_shape, ax[1], inter2_reduced);
+  error = reduce_SumSquare_4d_1ax(data, shape, ax[0], inter1_reduced);
+  error = reduce_SumSquare_4d_1ax(inter1_reduced, inter_shape, ax[1], inter2_reduced);
   inter_shape[ax[1]] = 1;
-  error = reduce_sum_4d_1ax(inter2_reduced, inter_shape, ax[2], reduced);
+  error = reduce_SumSquare_4d_1ax(inter2_reduced, inter_shape, ax[2], reduced);
   return error;
 }

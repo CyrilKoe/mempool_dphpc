@@ -515,6 +515,19 @@ int32_t reduce_sum_omp_static(int8_t const *__restrict__ A,
   return reduced;
 }
 
+int32_t reduce_sum_omp_static_simd(int32_t const *__restrict__ A,
+                              uint32_t num_elements) {
+  uint32_t i;
+  int32_t reduced = 0;
+#pragma omp parallel for reduction(+ : reduced)
+  for (i = 0; i < num_elements; i++) {
+    for (uint32_t j = 0; j < 4; ++j) {
+      reduced = __SUMDOTPSC4((v4s)*(A+i+j), 1, reduced);
+    }
+  }
+  return reduced;
+}
+
 // int32_t reduce_sum_parallel_simd_atomic(int32_t const *__restrict__ A,
 //                              uint32_t num_elements, uint32_t id,
 //                              uint32_t numThreads) {
@@ -588,201 +601,201 @@ int main() {
   mempool_barrier(num_cores);
   int32_t result, correct_result;
 
-  if (core_id == 0) {
-    mempool_wait(4 * num_cores);
-    cycles = mempool_get_timer();
-    mempool_start_benchmark();
-    result = reduce_sum_sequential(a, M);
-    mempool_stop_benchmark();
-    cycles = mempool_get_timer() - cycles;
-  }
-  else {
-    mempool_wait(4 * num_cores);
-    mempool_start_benchmark();
-    mempool_stop_benchmark();
-  }
+//   if (core_id == 0) {
+//     mempool_wait(4 * num_cores);
+//     cycles = mempool_get_timer();
+//     mempool_start_benchmark();
+//     result = reduce_sum_sequential(a, M);
+//     mempool_stop_benchmark();
+//     cycles = mempool_get_timer() - cycles;
+//   }
+//   else {
+//     mempool_wait(4 * num_cores);
+//     mempool_start_benchmark();
+//     mempool_stop_benchmark();
+//   }
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Sequential Result: %d\n", result);
-    printf("Sequential Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Sequential Result: %d\n", result);
+//     printf("Sequential Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel1(a, M/16, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel1(a, M/16, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel1 Result: %d\n", result);
-    printf("Manual Parallel1 Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel1 Result: %d\n", result);
+//     printf("Manual Parallel1 Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel2(a, M, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel2(a, M, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel2 Result: %d\n", result);
-    printf("Manual Parallel2 Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel2 Result: %d\n", result);
+//     printf("Manual Parallel2 Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel3(a, M/16, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel3(a, M/16, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel3 Result: %d\n", result);
-    printf("Manual Parallel3 Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel3 Result: %d\n", result);
+//     printf("Manual Parallel3 Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel4(a, M/16, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel4(a, M/16, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel4 Result: %d\n", result);
-    printf("Manual Parallel4 Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel4 Result: %d\n", result);
+//     printf("Manual Parallel4 Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel_atomic(a, M/16, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel_atomic(a, M/16, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel Atomic Result: %d\n", result);
-    printf("Manual Parallel Atomic Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel Atomic Result: %d\n", result);
+//     printf("Manual Parallel Atomic Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  if (core_id == 0) {
-    mempool_wait(4 * num_cores);
-    cycles = mempool_get_timer();
-    mempool_start_benchmark();
-    result = reduce_sum_sequential_simd((int32_t *)a, M/4);
-    mempool_stop_benchmark();
-    cycles = mempool_get_timer() - cycles;
-  }
-  else {
-    mempool_wait(4 * num_cores);
-    mempool_start_benchmark();
-    mempool_stop_benchmark();
-  }
+//   if (core_id == 0) {
+//     mempool_wait(4 * num_cores);
+//     cycles = mempool_get_timer();
+//     mempool_start_benchmark();
+//     result = reduce_sum_sequential_simd((int32_t *)a, M/4);
+//     mempool_stop_benchmark();
+//     cycles = mempool_get_timer() - cycles;
+//   }
+//   else {
+//     mempool_wait(4 * num_cores);
+//     mempool_start_benchmark();
+//     mempool_stop_benchmark();
+//   }
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Sequential SIMD Result: %d\n", result);
-    printf("Sequential SIMD Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Sequential SIMD Result: %d\n", result);
+//     printf("Sequential SIMD Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
   
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel1_simd((int32_t *)a, M/16, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel1_simd((int32_t *)a, M/16, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel1 SIMD Result: %d\n", result);
-    printf("Manual Parallel1 SIMD Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel1 SIMD Result: %d\n", result);
+//     printf("Manual Parallel1 SIMD Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel2_simd((int32_t *)a, M/4, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel2_simd((int32_t *)a, M/4, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel2 SIMD Result: %d\n", result);
-    printf("Manual Parallel2 SIMD Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel2 SIMD Result: %d\n", result);
+//     printf("Manual Parallel2 SIMD Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel3_simd((int32_t *)a, M/16, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel3_simd((int32_t *)a, M/16, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel3 SIMD Result: %d\n", result);
-    printf("Manual Parallel3 SIMD Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel3 SIMD Result: %d\n", result);
+//     printf("Manual Parallel3 SIMD Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel4_simd((int32_t *)a, M/16, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel4_simd((int32_t *)a, M/16, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel4 SIMD Result: %d\n", result);
-    printf("Manual Parallel4 SIMD Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel4 SIMD Result: %d\n", result);
+//     printf("Manual Parallel4 SIMD Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
-  cycles = mempool_get_timer();
-  mempool_start_benchmark();
-  result = reduce_sum_parallel_simd_atomic((int32_t *)a, M/16, core_id, num_cores);
-  mempool_stop_benchmark();
-  cycles = mempool_get_timer() - cycles;
+//   cycles = mempool_get_timer();
+//   mempool_start_benchmark();
+//   result = reduce_sum_parallel_simd_atomic((int32_t *)a, M/16, core_id, num_cores);
+//   mempool_stop_benchmark();
+//   cycles = mempool_get_timer() - cycles;
 
-#ifdef VERBOSE
-  mempool_barrier(num_cores);
-  if (core_id == 0) {
-    printf("Manual Parallel SIMD Atomic Result: %d\n", result);
-    printf("Manual Parallel SIMD Atomic Duration: %d\n", cycles);
-  }
-#endif
-  mempool_barrier(num_cores);
+// #ifdef VERBOSE
+//   mempool_barrier(num_cores);
+//   if (core_id == 0) {
+//     printf("Manual Parallel SIMD Atomic Result: %d\n", result);
+//     printf("Manual Parallel SIMD Atomic Duration: %d\n", cycles);
+//   }
+// #endif
+//   mempool_barrier(num_cores);
 
   /*  OPENMP IMPLEMENTATION  */
   int32_t omp_result;
@@ -798,6 +811,17 @@ int main() {
 
     printf("OMP Static Result: %d\n", omp_result);
     printf("OMP Static Duration: %d\n", cycles);
+
+    mempool_wait(4 * num_cores);
+
+    cycles = mempool_get_timer();
+    mempool_start_benchmark();
+    omp_result = reduce_sum_omp_static_simd((int32_t *)a, M/4);
+    mempool_stop_benchmark();
+    cycles = mempool_get_timer() - cycles;
+
+    printf("OMP Static SIMD Result: %d\n", omp_result);
+    printf("OMP Static SIMD Duration: %d\n", cycles);
 
     mempool_wait(4 * num_cores);
 
