@@ -11,7 +11,7 @@
 #include "printf.h"
 #include "runtime.h"
 #include "synchronization.h"
-#include "onnx-ReduceSum.h"
+#include "reduceSumSquare.h"
 
 // Enable verbose printing
 #define VERBOSE
@@ -19,11 +19,11 @@
 // ----------------------------------------------------------------------------
 // Input parameters
 // ----------------------------------------------------------------------------
-#define IN_SIZE 65536
+#define IN_SIZE 131072
 #define OUT_SIZE 256
 
 // Above rank 4, only reduction over all axes is supported
-uint32_t shape[] = {256, 256};
+uint32_t shape[] = {256, 512};
 uint32_t axes[] = {1};
 uint32_t rank = 2;
 uint32_t num_axes = 1; // size of axes array
@@ -52,7 +52,7 @@ void print_vector(int32_t const *vector, uint32_t num_elements) {
   }
 }
 
-int32_t reduce_sum_wrapper(int32_t const *__restrict__ data,
+int32_t reduce_SumSquare_wrapper(int32_t const *__restrict__ data,
                             uint32_t *__restrict__ shape, 
                             uint32_t *__restrict__ axes,
                             uint32_t rank, uint32_t num_axes,
@@ -65,19 +65,19 @@ int32_t reduce_sum_wrapper(int32_t const *__restrict__ data,
         reduced[i] = data[i];
       }
     } else { // Reduce all axes
-      error = reduce_sum_all(data, shape, rank, reduced);
+      error = reduce_SumSquare_all(data, shape, rank, reduced);
     }
   } else {
     if (rank == 1) {
-      error = reduce_sum_all(data, shape, rank, reduced);
+      error = reduce_SumSquare_all(data, shape, rank, reduced);
     } else if (rank == 2) {
       uint32_t inter_shape[4] = {shape[0], shape[1], 1, 1};
       if (num_axes == 1){
         // printf("Start 2d_1ax...\n");
-        error = reduce_sum_4d_1ax(data, inter_shape, axes[0], reduced);
+        error = reduce_SumSquare_4d_1ax(data, inter_shape, axes[0], reduced);
       } else if (num_axes == 2){
         // printf("Start 2d_2ax...\n");
-        error = reduce_sum_all(data, shape, rank, reduced);
+        error = reduce_SumSquare_all(data, shape, rank, reduced);
       } else {
         printf("Num axes cannot exceed rank!\n");
         return 1;
@@ -86,13 +86,13 @@ int32_t reduce_sum_wrapper(int32_t const *__restrict__ data,
       uint32_t inter_shape[4] = {shape[0], shape[1], shape[2], 1};
       if (num_axes == 1){
         // printf("Start 3d_1ax...\n");
-        error = reduce_sum_4d_1ax(data, inter_shape, axes[0], reduced);
+        error = reduce_SumSquare_4d_1ax(data, inter_shape, axes[0], reduced);
       } else if (num_axes == 2){
         // printf("Start 3d_2ax...\n");
-        error = reduce_sum_4d_2ax(data, inter_shape, axes, reduced);
+        error = reduce_SumSquare_4d_2ax(data, inter_shape, axes, reduced);
       } else if (num_axes == 3){
         // printf("Start 3d_3ax...\n");
-        error = reduce_sum_all(data, shape, rank, reduced);
+        error = reduce_SumSquare_all(data, shape, rank, reduced);
       } else {
         printf("Num axes cannot exceed rank!\n");
         return 1;
@@ -100,16 +100,16 @@ int32_t reduce_sum_wrapper(int32_t const *__restrict__ data,
     } else if (rank == 4) {
       if (num_axes == 1){
         // printf("Start 4d_1ax...\n");
-        error = reduce_sum_4d_1ax(data, shape, axes[0], reduced);
+        error = reduce_SumSquare_4d_1ax(data, shape, axes[0], reduced);
       } else if (num_axes == 2){
         // printf("Start 4d_2ax...\n");
-        error = reduce_sum_4d_2ax(data, shape, axes, reduced);
+        error = reduce_SumSquare_4d_2ax(data, shape, axes, reduced);
       } else if (num_axes == 3){
         // printf("Start 4d_3ax...\n");
-        error = reduce_sum_4d_3ax(data, shape, axes, reduced);
+        error = reduce_SumSquare_4d_3ax(data, shape, axes, reduced);
       } else if (num_axes == 4){
         // printf("Start 4d_4ax...\n");
-        error = reduce_sum_all(data, shape, rank, reduced);
+        error = reduce_SumSquare_all(data, shape, rank, reduced);
       } else {
         printf("Num axes cannot exceed rank!\n");
         return 1;
@@ -156,7 +156,7 @@ int main() {
     mempool_wait(4 * num_cores);
     cycles = mempool_get_timer();
     mempool_start_benchmark();
-    error = reduce_sum_wrapper(data, shape, axes, rank, num_axes, 1, noop_with_empty_axes);
+    error = reduce_SumSquare_wrapper(data, shape, axes, rank, num_axes, 1, noop_with_empty_axes);
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
 

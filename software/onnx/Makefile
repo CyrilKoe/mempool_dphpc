@@ -11,6 +11,8 @@ BIN_DIR := $(abspath $(SOFTWARE_DIR)/bin)
 APPS_DIR := $(ROOT_DIR)
 
 NUM_CORES_BENCH ?= NUM_CORES
+NTHREADS ?= NUM_CORES
+IS ?= 4 # input size
 
 # OpenMP runtime
 OMP_DIR       ?= $(RUNTIME_DIR)/omp
@@ -39,9 +41,13 @@ my_argmax_cflags:
 # Call argmax CFLAGS
 argmax*/*.c: my_argmax_cflags
 
+# Reduce*
+my_reduce_cflags:
+	$(eval RISCV_CCFLAGS=${RISCV_CCFLAGS} -I$(SOFTWARE_DIR)/onnx/reduce_utils -DIS=$(IS) -DNTHREADS=$(NTHREADS))
+# reduce executables
+reduce*/*.c: my_reduce_cflags
+
 # ...
-
-
 
 $(APPS): % : $(BIN_DIR)/$(APP_PREFIX)% $(APPS_DIR)/Makefile $(shell find $(RUNTIME_DIR)/**.{S,c,h,ld} -type f)
 
