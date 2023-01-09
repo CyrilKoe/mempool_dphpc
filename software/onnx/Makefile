@@ -36,8 +36,8 @@ all: $(BINARIES)
 # Argmax CFLAGS
 my_argmax_cflags:
 	$(eval RISCV_CCFLAGS=${RISCV_CCFLAGS} -I$(SOFTWARE_DIR)/onnx/argmax_utils -DNUM_CORES_BENCH=$(NUM_CORES_BENCH))
-# Argmax executables
-$(BIN_DIR)/$(APP_PREFIX)argmax*: my_argmax_cflags
+# Call argmax CFLAGS
+argmax*/*.c: my_argmax_cflags
 
 # ...
 
