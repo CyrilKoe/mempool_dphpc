@@ -1,9 +1,9 @@
 LDFLAGS = -fopenmp
 NUM_CORES_BENCH ?= NUM_CORES
-CFLAGS = -O0 -D IS_MEMPOOL=0 -DNUM_CORES_BENCH=$(NUM_CORES_BENCH) -I../my_argmax_data
+CFLAGS = -O0 -D IS_MEMPOOL=0 -DNUM_CORES_BENCH=$(NUM_CORES_BENCH) -I../argmax_utils -I../commons
 CC = gcc
 
-main: main.c ../my_argmax_data/data.h ../my_argmax_data/no_mempool.h
+main: main.c ../argmax_utils/data.h ../commons/no_mempool.h
 	${CC} ${CFLAGS} ${LDFLAGS} main.c -o main
 
 dump: main
