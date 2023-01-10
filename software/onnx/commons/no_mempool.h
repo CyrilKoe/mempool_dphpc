@@ -5,16 +5,15 @@
 #define NUM_CORES 256
 #define BANKING_FACTOR 4
 
-
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
-
 // Linked list to measure regions's cpu time
 typedef struct measure {
-    clock_t start;
-    clock_t end;
-    struct measure *next;
+  clock_t start;
+  clock_t end;
+  struct measure *next;
 } measure_t;
 
 measure_t *measure_list = NULL;
@@ -24,63 +23,68 @@ typedef struct {
   char nothing;
 } alloc_t;
 
-void domain_free(alloc_t *alloc, void *const ptr) {
-    free(ptr);
-}
+void domain_free(alloc_t *alloc, void *const ptr) { free(ptr); }
 
 void *domain_malloc(alloc_t *alloc, const uint32_t size) {
-    return malloc(size);
+  return malloc(size);
 }
 
-void *simple_malloc(const uint32_t size) {
-    return malloc(size);
-}
+void *simple_malloc(const uint32_t size) { return malloc(size); }
 
-void *simple_free(void *const ptr) {
-    free(ptr);
-}
+void *simple_free(void *const ptr) { free(ptr); }
 
 alloc_t *get_alloc_tile(const uint32_t tile_id) { return NULL; }
 
 void mempool_start_benchmark() {
-    measure_t *tmp = measure_list;
-    measure_t *new_elem;
+  measure_t *tmp = measure_list;
+  measure_t *new_elem;
 
-    new_elem = (measure_t*) malloc(sizeof(measure_t));
-    new_elem->next = NULL;
+  new_elem = (measure_t *)malloc(sizeof(measure_t));
+  new_elem->next = NULL;
 
-    if(measure_list == NULL) {
-        measure_list = new_elem;
-        new_elem->start = clock();
-        return;
-    }
-
-    while(tmp->next)
-        tmp = tmp->next;
-    
-    tmp->next = new_elem;
+  if (measure_list == NULL) {
+    measure_list = new_elem;
     new_elem->start = clock();
+    printf("Starting of the program, start_t = %ld\n", clock());
     return;
+  }
+
+  while (tmp->next)
+    tmp = tmp->next;
+
+  tmp->next = new_elem;
+  new_elem->start = clock();
+  printf("Start %lu\n", new_elem->start);
+  return;
 }
 
 void mempool_stop_benchmark() {
-    measure_t *tmp = measure_list;
-    long end = clock();
-    while(tmp->next)
-        tmp = tmp->next;
-    tmp->end = end;
-    return;
+  measure_t *tmp = measure_list;
+  long end = clock();
+  while (tmp->next)
+    tmp = tmp->next;
+  tmp->end = end;
+  return;
 }
 
 void print_benchmark() {
-    measure_t *tmp = measure_list;
-    unsigned int i = 0;
-    while(tmp && tmp->next) {
-        printf("Section %u : %lu us (%lu -> %lu)\n", i++, tmp->end - tmp->start, tmp->start, tmp->end);
-        tmp = tmp->next;
-    }
-    printf("Cycles per sec %lu\n", CLOCKS_PER_SEC);
-    return;
+  measure_t *tmp = measure_list;
+  unsigned int i = 0;
+  while (tmp && tmp->next) {
+    printf("Section %u : %lu us (%lu -> %lu)\n", i++, tmp->end - tmp->start,
+           tmp->start, tmp->end);
+    printf("Section %u : %.10f s (%lu -> %lu)\n", i++,
+           (tmp->end - tmp->start) / (CLOCKS_PER_SEC), tmp->start, tmp->end);
+    tmp = tmp->next;
+  }
+  printf("Cycles per sec %lu\n", CLOCKS_PER_SEC);
+  return;
 }
+
+void dma_memcpy_blocking(void *dst, void *src, size_t size) {
+  memcpy(dst, src, size);
+}
+
+int32_t __builtin_pulp_maxsi(int32_t a, int32_t b) { return a > b ? a : b; }
 
 #endif
