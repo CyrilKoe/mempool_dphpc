@@ -1,3 +1,8 @@
+# // Copyright 2021 ETH Zurich and University of Bologna.
+# // Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# // SPDX-License-Identifier: Apache-2.0
+
+# // Author: Viviane Potocnik, ETH Zurich
 while getopts :a:h opt; do
   case "${opt}" in
     h)
@@ -39,7 +44,9 @@ else
 fi
 
 idx=$RANDOM
-file_name="tracker_${cur_app}_${idx}.txt"
+# get the basename of cur_app
+cur_app_name=$(basename $cur_app)
+file_name="tracker_${cur_app_name}_${idx}.txt"
 file_path=${APP_DIR}/${file_name}
 
 if [ -f "$file_path" ];
@@ -55,7 +62,9 @@ echo "[MemPool HW] Simulation started at: $START_H on $START_D"
 echo "Saving output to: ${file_path}"
 start_time=$SECONDS
 # sleep 2
-app=${cur_app} make simcvcs #2>&1 | tee ${file_path}
+bpath="build_${idx}"
+echo "Traces stored in buildpath: ${bpath}."
+buildpath=${bpath} app=${cur_app} make simcvcs #2>&1 | tee ${file_path}
 # app=${cur_app} make sim
 elapsed=$(( SECONDS - start_time ))
 END_D=$( date "+%d/%m/%y" )
@@ -64,12 +73,12 @@ echo "[MemPool HW] Simulation finished at: $END_H on $END_D"
 eval "echo [MemPool HW] Elapsed time: $(date -ud "@$elapsed" +'%H hr %M min %S sec')"
 
 echo "Generating the traces for run id: ${idx}."
-make trace 2>&1 | tee ${file_path}
+buildpath=${bpath} make trace 2>&1 | tee ${file_path}
 result_id=$(grep -oP '(?<= tee results/).*(?=/)' ${file_path})
-days=$(date -ud "@$elapsed" +'%S') #$( date -ud "@$elapsed" + '$((%s/3600/24)))
-eval days=$((${days}/3600/24))
-echo ${days}
-mail -s "[MemPool] Finished run with id ${idx}" vivianep@iis.ee.ethz.ch <<< "File stored in: ${file_path}. Simulation took ${days} days $(date -ud "@$elapsed" +'%H hr %M min %S sec') . The results are stored in: /result/${result_id}."
+# days=$(date -ud "@$elapsed" +'%S') #$( date -ud "@$elapsed" + '$((%s/3600/24)))
+# eval days=$((${days}/3600/24))
+# echo ${days}
+mail -s "[MemPool] Finished run with id ${idx}" vivianep@iis.ee.ethz.ch <<< "File stored in: ${file_path}. Simulation took $(date -ud "@$elapsed" +'%H hr %M min %S sec') . The results are stored in: /result/${result_id}."
 echo "[MemPool HW] Message sent."
 
 # grep name of directory name after */hardware/results/ in the text file
