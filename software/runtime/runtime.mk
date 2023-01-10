@@ -131,7 +131,7 @@ RISCV_CCFLAGS_TESTS ?= $(RISCV_FLAGS_GCC) $(RISCV_FLAGS_COMMON_TESTS) -fvisibili
 %.ld: %.ld.c
 	$(RISCV_CC) -P -E $(DEFINES) $< -o $@
 
-%.h: %.args
+%.h: %.args $(MEMPOOL_DIR)/scripts/gen_data.py
 	cat $< | xargs $(python) $(MEMPOOL_DIR)/scripts/gen_data.py --clangformat=$(LLVM_INSTALL_DIR)/bin/clang-format -o $@
 
 # Bootrom
