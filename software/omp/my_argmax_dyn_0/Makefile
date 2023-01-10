@@ -2,7 +2,7 @@ LDFLAGS = -fopenmp
 CFLAGS = -D IS_MEMPOOL=0
 CC = gcc-11.2.0
 
-main: main.c data.h
+main: main.c data.h no_mempool.h
 	${CC} ${CFLAGS} ${LDFLAGS} main.c -o main
 
 # Dirty soft link to not modify the omp Makefile
