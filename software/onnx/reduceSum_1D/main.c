@@ -71,14 +71,14 @@ int32_t reduce_sum_sequential(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_sum_parallel1(int32_t const *__restrict__ A,
-                              uint32_t num_elements, uint32_t id,
-                              uint32_t numThreads) {
+                             uint32_t num_elements, uint32_t id,
+                             uint32_t numThreads) {
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
+      Partial_sums[id] += A[i * 4 + j];
     }
   }
   mempool_barrier(numThreads);
@@ -93,8 +93,8 @@ int32_t reduce_sum_parallel1(int32_t const *__restrict__ A,
 
 // does not make sense to me since memory layout is not considered
 int32_t reduce_sum_parallel2(int32_t const *__restrict__ A,
-                              uint32_t num_elements, uint32_t id,
-                              uint32_t numThreads) {
+                             uint32_t num_elements, uint32_t id,
+                             uint32_t numThreads) {
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
@@ -113,14 +113,14 @@ int32_t reduce_sum_parallel2(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_sum_parallel3(int32_t const *__restrict__ A,
-                              uint32_t num_elements, uint32_t id,
-                              uint32_t numThreads) {
+                             uint32_t num_elements, uint32_t id,
+                             uint32_t numThreads) {
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
+      Partial_sums[id] += A[i * 4 + j];
     }
   }
   mempool_barrier(numThreads);
@@ -159,14 +159,14 @@ int32_t reduce_sum_parallel3(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_sum_parallel4(int32_t const *__restrict__ A,
-                              uint32_t num_elements, uint32_t id,
-                              uint32_t numThreads) {
+                             uint32_t num_elements, uint32_t id,
+                             uint32_t numThreads) {
 
   Partial_sums[id] = 0;
   int32_t reduced = 0;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      Partial_sums[id] += A[i*4+j];
+      Partial_sums[id] += A[i * 4 + j];
     }
   }
   mempool_barrier(numThreads);
@@ -277,15 +277,15 @@ int32_t reduce_sum_parallel4(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_sum_parallel_atomic(int32_t const *__restrict__ A,
-                                    uint32_t num_elements, uint32_t id,
-                                    uint32_t numThreads) {
+                                   uint32_t num_elements, uint32_t id,
+                                   uint32_t numThreads) {
 
   reduced_atomic = 0;
   mempool_barrier(numThreads);
   int32_t partial_sum = 0;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      partial_sum += A[i*4+j];
+      partial_sum += A[i * 4 + j];
     }
   }
 #pragma omp atomic
@@ -352,8 +352,7 @@ int main() {
     result = reduce_sum_sequential(a, M);
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
-  }
-  else {
+  } else {
     mempool_wait(4 * num_cores);
     mempool_start_benchmark();
     mempool_stop_benchmark();
@@ -376,8 +375,7 @@ int main() {
     result = reduce_sum_sequential(a, M);
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
-  }
-  else {
+  } else {
     mempool_wait(4 * num_cores);
     mempool_start_benchmark();
     mempool_stop_benchmark();
@@ -395,7 +393,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel1(a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel1(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -411,7 +409,7 @@ int main() {
 #ifdef HOT
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel1(a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel1(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -459,7 +457,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel3(a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel3(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -475,7 +473,7 @@ int main() {
 #ifdef HOT
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel3(a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel3(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -491,7 +489,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel4(a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel4(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -507,7 +505,7 @@ int main() {
 #ifdef HOT
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel4(a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel4(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -523,7 +521,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel_atomic(a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel_atomic(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -539,7 +537,7 @@ int main() {
 #ifdef HOT
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_sum_parallel_atomic(a, M/4, core_id, num_cores);
+  result = reduce_sum_parallel_atomic(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
