@@ -19,11 +19,11 @@
 // ----------------------------------------------------------------------------
 // Input parameters
 // ----------------------------------------------------------------------------
-#define IN_SIZE 131072
+#define IN_SIZE 65536
 #define OUT_SIZE 1
 
 // Above rank 4, only reduction over all axes is supported
-uint32_t shape[] = {256, 512};
+uint32_t shape[] = {256, 256};
 uint32_t axes[] = {0, 1};
 uint32_t rank = 2;
 uint32_t num_axes = 2; // size of axes array
