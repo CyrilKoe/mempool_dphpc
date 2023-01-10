@@ -7,36 +7,38 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../../apps/pooling/data.h"
+#include "data.h"
 #include "dma.h"
 #include "encoding.h"
+#include "kernel/pooling.h"
+#include "libgomp.h"
 #include "mempool_dma_frontend.h"
 #include "printf.h"
 #include "runtime.h"
 #include "synchronization.h"
-#include "kernel/pooling.h"
-#include "libgomp.h"
 
 #define DMA_ADDRESS (0x40010000)
 
 #define STATIC 1
 #define DYNAMIC 0
 
+// FIXME: openMP static scheduling
 
 // define matrix dimensions
 // B = maxpool(A, K, S) with A[MxM], pooling kernel [KxK] and stride S
 #define K 16
 #define S 4
-#define OUTx 16
-#define OUTy 16
+#define OUTx 64
+#define OUTy 64
 // for now hard-coded, but should be OUT + K - S
-#define Mx ((OUTx - 1) * S + K) 
-#define My ((OUTx - 1) * S + K) 
-#define SIZE (Mx*My*sizeof(int32_t))
+#define Mx ((OUTx - 1) * S + K)
+#define My ((OUTx - 1) * S + K)
+#define SIZE (Mx * My * sizeof(int32_t))
 
 int32_t matrix_A[Mx * My] __attribute__((section(".l1_prio")));
 // TODO: implement writing back of result in double-buffered fashion
-int32_t matrix_B[((int)((Mx - K)/S) + 1) * ((int)((My - K)/S) + 1)] __attribute__((section(".l1_prio")));
+int32_t matrix_B[((int)((Mx - K) / S) + 1) * ((int)((My - K) / S) + 1)]
+    __attribute__((section(".l1_prio")));
 
 int volatile error __attribute__((section(".l1")));
 
@@ -44,62 +46,57 @@ int main() {
   // uint32_t num_cores_per_group = NUM_CORES / NUM_GROUPS;
   uint32_t core_id = mempool_get_core_id();
   // uint32_t group_id = core_id / num_cores_per_group;
-  uint32_t num_cores = mempool_get_core_count();
+  // uint32_t num_cores = mempool_get_core_count();
   // Initialize barrier and synchronize
   mempool_barrier_init(core_id);
 
   if (core_id == 0) {
-    
+
     // Copy the input matrix from L2 to L1 memory
     printf("Copying %d bytes into L1 memory\n", SIZE);
     dma_memcpy_blocking(matrix_A, l2_data, SIZE);
 
     printf("DMA transfer done.\n");
   }
-  
+
   if (STATIC) {
 
     if (core_id == 0) {
+
       // Benchmark max pooling kernel
-      printf("Starting openMP pooling with static scheduling...\n");
+      // printf("Starting openMP pooling with static scheduling...\n");
       mempool_start_benchmark();
       max_pooling_openmp_static(matrix_A, matrix_B, Mx, K, S);
       mempool_stop_benchmark();
-      printf("OpenMP pooling with static scheduling done...\n");
+      // printf("OpenMP pooling with static scheduling done...\n");
     } else {
-      while(1) {
+      while (1) {
         mempool_wfi();
         mempool_start_benchmark();
         run_task(core_id);
         mempool_stop_benchmark();
       }
     }
-
   }
 
   if (DYNAMIC) {
 
     if (core_id == 0) {
-      mempool_barrier_init(core_id);
       // Benchmark max pooling kernel
-      printf("Starting openMP pooling with dynamic scheduling...\n");
+      // printf("Starting openMP pooling with dynamic scheduling...\n");
       mempool_start_benchmark();
       max_pooling_openmp_dynamic(matrix_A, matrix_B, Mx, K, S);
       mempool_stop_benchmark();
-      printf("OpenMP pooling with dynamic scheduling done...\n");
+      // printf("OpenMP pooling with dynamic scheduling done...\n");
     } else {
-      while(1) {
-        mempool_barrier_init(core_id);
+      while (1) {
         mempool_wfi();
         mempool_start_benchmark();
         run_task(core_id);
         mempool_stop_benchmark();
       }
     }
-
   }
 
-  mempool_barrier_init(core_id);
-  
   return 0;
 }

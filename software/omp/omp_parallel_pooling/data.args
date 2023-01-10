@@ -1,1 +1,1 @@
---variable=l2_data --size=256,256 --min 0 --max 25000
+--variable=l2_data --size=268,268 --min -120 --max 120
