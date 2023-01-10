@@ -24,6 +24,7 @@ include $(RUNTIME_DIR)/runtime.mk
 # Create convenience target
 APP_PREFIX := onnx/
 APPS := $(patsubst $(APPS_DIR)/%/main.c,%,$(shell find $(APPS_DIR) -name "main.c"))
+DATA := $(patsubst %.args,%.h,$(shell find $(APPS_DIR) -name "data.args"))
 BINARIES := $(addprefix $(BIN_DIR)/$(APP_PREFIX),$(APPS))
 
 # Make all applications
@@ -46,7 +47,7 @@ $(BIN_DIR)/$(APP_PREFIX)argmax*: my_argmax_cflags
 $(APPS): % : $(BIN_DIR)/$(APP_PREFIX)% $(APPS_DIR)/Makefile $(shell find $(RUNTIME_DIR)/**.{S,c,h,ld} -type f)
 
 .PHONY: $(BINARIES)
-$(BINARIES): $(BIN_DIR)/$(APP_PREFIX)%: %/main.c.o $(RUNTIME) $(OMP_RUNTIME) $(LINKER_SCRIPT) update_opcodes
+$(BINARIES): $(BIN_DIR)/$(APP_PREFIX)%: %/main.c.o $(RUNTIME) $(OMP_RUNTIME) $(LINKER_SCRIPT) $(DATA) update_opcodes
 	mkdir -p $(dir $@)
 	$(RISCV_CC) -Iinclude $(RISCV_LDFLAGS) -o $@ $< $(RUNTIME) $(OMP_RUNTIME) -T$(RUNTIME_DIR)/link.ld
 	$(RISCV_OBJDUMP) $(RISCV_OBJDUMP_FLAGS) -D $@ > $@.dump
