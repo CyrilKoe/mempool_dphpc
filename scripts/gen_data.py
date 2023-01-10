@@ -54,7 +54,7 @@ def main():
     parser.add_argument(
         '--dtype',
         nargs='+',
-        default='int32_t',
+        default=['int32_t'],
         help='Data type'
     )
     parser.add_argument(
