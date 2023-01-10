@@ -91,7 +91,7 @@ int32_t reduce_Prod_4d_1ax(int32_t const *__restrict__ data,
     return 1;
   }
 
-#pragma omp parallel for collapse(3) num_threads(NTHREADS)
+#pragma omp parallel for collapse(3) num_threads(NUM_CORES_BENCH)
   for (uint32_t i0 = 0; i0 < R0; i0++) {
     for (uint32_t i1 = 0; i1 < R1; i1++) {
       for (uint32_t i2 = 0; i2 < R2; i2++) {
