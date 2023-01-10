@@ -40,7 +40,13 @@ for folders in os.listdir(main_path):
                 max = np.max(column)
                 # print("%-30s %4.4f" % (key, max))
                 cycles[section] = max
-            df_tmp = pd.DataFrame(cycles, index=['seq', 'man1', 'man2', 'man3', 'man4', 'man_amo', 'seq_simd', 'man1_simd', 'man2_simd', 'man3_simd', 'man4_simd', 'simd_atomic', 'omp_stat'], columns=[folders])
+            df_tmp = pd.DataFrame(cycles, index=['seq', 'man1', 'man2',
+                                                 'man3', 'man4', 'man_amo',
+                                                 'seq_simd', 'man1_simd',
+                                                 'man2_simd', 'man3_simd',
+                                                 'man4_simd', 'simd_atomic',
+                                                 'omp_stat'],
+                                  columns=[folders])
             df = pd.concat([df, df_tmp], axis=1)
     os.chdir(main_path)
 print(df)

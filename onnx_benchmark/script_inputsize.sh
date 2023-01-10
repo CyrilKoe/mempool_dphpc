@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Copyright 2021 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
 export mempool_path=../
 export app=reduceSum
 export script_path=$mempool_path/onnx_benchmark

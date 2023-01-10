@@ -59,7 +59,7 @@ void print_vector(int32_t const *vector, uint32_t num_elements) {
 }
 
 int32_t reduce_prod_sequential(int32_t const *__restrict__ A,
-                              uint32_t num_elements) {
+                               uint32_t num_elements) {
   uint32_t i;
   int32_t reduced = 1;
   for (i = 0; i < num_elements; i++) {
@@ -76,7 +76,7 @@ int32_t reduce_prod_parallel1(int32_t const *__restrict__ A,
   int32_t reduced = 1;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      Partial_prods[id] *= A[i*4+j];
+      Partial_prods[id] *= A[i * 4 + j];
     }
   }
   mempool_barrier(numThreads);
@@ -118,7 +118,7 @@ int32_t reduce_prod_parallel3(int32_t const *__restrict__ A,
   int32_t reduced = 1;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      Partial_prods[id] *= A[i*4+j];
+      Partial_prods[id] *= A[i * 4 + j];
     }
   }
   mempool_barrier(numThreads);
@@ -164,7 +164,7 @@ int32_t reduce_prod_parallel4(int32_t const *__restrict__ A,
   int32_t reduced = 1;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      Partial_prods[id] *= A[i*4+j];
+      Partial_prods[id] *= A[i * 4 + j];
     }
   }
   mempool_barrier(numThreads);
@@ -283,7 +283,7 @@ int32_t reduce_prod_parallel_atomic(int32_t const *__restrict__ A,
   int32_t partial_prod = 1;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      partial_prod *= A[i*4+j];
+      partial_prod *= A[i * 4 + j];
     }
   }
 #pragma omp atomic
@@ -293,7 +293,7 @@ int32_t reduce_prod_parallel_atomic(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_prod_omp_static(int32_t const *__restrict__ A,
-                              uint32_t num_elements) {
+                               uint32_t num_elements) {
   uint32_t i;
   int32_t reduced = 1;
 #pragma omp parallel for reduction(* : reduced)
@@ -304,7 +304,7 @@ int32_t reduce_prod_omp_static(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_prod_omp_dynamic(int32_t const *__restrict__ A,
-                               uint32_t chunksize) {
+                                uint32_t chunksize) {
   uint32_t i;
   int32_t reduced = 1;
   // printf("num_elements %d\n", num_elements);
@@ -350,8 +350,7 @@ int main() {
     result = reduce_prod_sequential(a, M);
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
-  }
-  else {
+  } else {
     mempool_wait(4 * num_cores);
     mempool_start_benchmark();
     mempool_stop_benchmark();
@@ -368,7 +367,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_prod_parallel1(a, M/4, core_id, num_cores);
+  result = reduce_prod_parallel1(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -398,7 +397,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_prod_parallel3(a, M/4, core_id, num_cores);
+  result = reduce_prod_parallel3(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -413,7 +412,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_prod_parallel4(a, M/4, core_id, num_cores);
+  result = reduce_prod_parallel4(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -428,7 +427,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_prod_parallel_atomic(a, M/4, core_id, num_cores);
+  result = reduce_prod_parallel_atomic(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 

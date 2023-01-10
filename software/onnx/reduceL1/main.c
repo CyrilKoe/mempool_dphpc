@@ -9,9 +9,9 @@
 #include "encoding.h"
 #include "libgomp.h"
 #include "printf.h"
+#include "reduceL1.h"
 #include "runtime.h"
 #include "synchronization.h"
-#include "reduceL1.h"
 
 // Enable verbose printing
 #define VERBOSE
@@ -36,8 +36,8 @@ int32_t reduced[OUT_SIZE] __attribute__((section(".l1")))
 __attribute__((aligned(NUM_CORES * 4 * 4)));
 
 // Initialize the matrices in parallel
-void init_vector(int32_t *vector, uint32_t num_elements,
-                 uint32_t core_id, uint32_t num_cores) {
+void init_vector(int32_t *vector, uint32_t num_elements, uint32_t core_id,
+                 uint32_t num_cores) {
   // Parallelize over rows
   for (uint32_t i = core_id; i < num_elements; i += num_cores) {
     vector[i] = 1;
@@ -53,12 +53,12 @@ void print_vector(int32_t const *vector, uint32_t num_elements) {
 }
 
 int32_t reduce_L1_wrapper(int32_t const *__restrict__ data,
-                            uint32_t *__restrict__ shape, 
-                            uint32_t *__restrict__ axes,
-                            uint32_t rank, uint32_t num_axes,
-                            uint32_t keepdims, uint32_t noop_with_empty_axes) {
+                          uint32_t *__restrict__ shape,
+                          uint32_t *__restrict__ axes, uint32_t rank,
+                          uint32_t num_axes, uint32_t keepdims,
+                          uint32_t noop_with_empty_axes) {
 
-  int32_t error = 0;                            
+  int32_t error = 0;
   if (num_axes == 0) {
     if (noop_with_empty_axes) {
       for (int i = 0; i < OUT_SIZE; i++) {
@@ -72,10 +72,10 @@ int32_t reduce_L1_wrapper(int32_t const *__restrict__ data,
       error = reduce_L1_all(data, shape, rank, reduced);
     } else if (rank == 2) {
       uint32_t inter_shape[4] = {shape[0], shape[1], 1, 1};
-      if (num_axes == 1){
+      if (num_axes == 1) {
         // printf("Start 2d_1ax...\n");
         error = reduce_L1_4d_1ax(data, inter_shape, axes[0], reduced);
-      } else if (num_axes == 2){
+      } else if (num_axes == 2) {
         // printf("Start 2d_2ax...\n");
         error = reduce_L1_all(data, shape, rank, reduced);
       } else {
@@ -84,13 +84,13 @@ int32_t reduce_L1_wrapper(int32_t const *__restrict__ data,
       }
     } else if (rank == 3) {
       uint32_t inter_shape[4] = {shape[0], shape[1], shape[2], 1};
-      if (num_axes == 1){
+      if (num_axes == 1) {
         // printf("Start 3d_1ax...\n");
         error = reduce_L1_4d_1ax(data, inter_shape, axes[0], reduced);
-      } else if (num_axes == 2){
+      } else if (num_axes == 2) {
         // printf("Start 3d_2ax...\n");
         error = reduce_L1_4d_2ax(data, inter_shape, axes, reduced);
-      } else if (num_axes == 3){
+      } else if (num_axes == 3) {
         // printf("Start 3d_3ax...\n");
         error = reduce_L1_all(data, shape, rank, reduced);
       } else {
@@ -98,16 +98,16 @@ int32_t reduce_L1_wrapper(int32_t const *__restrict__ data,
         return 1;
       }
     } else if (rank == 4) {
-      if (num_axes == 1){
+      if (num_axes == 1) {
         // printf("Start 4d_1ax...\n");
         error = reduce_L1_4d_1ax(data, shape, axes[0], reduced);
-      } else if (num_axes == 2){
+      } else if (num_axes == 2) {
         // printf("Start 4d_2ax...\n");
         error = reduce_L1_4d_2ax(data, shape, axes, reduced);
-      } else if (num_axes == 3){
+      } else if (num_axes == 3) {
         // printf("Start 4d_3ax...\n");
         error = reduce_L1_4d_3ax(data, shape, axes, reduced);
-      } else if (num_axes == 4){
+      } else if (num_axes == 4) {
         // printf("Start 4d_4ax...\n");
         error = reduce_L1_all(data, shape, rank, reduced);
       } else {
@@ -142,12 +142,12 @@ int main() {
   // Initialize Matrices
   init_vector(data, IN_SIZE, core_id, num_cores);
 
-// #ifdef VERBOSE
-//   mempool_barrier(num_cores);
-//   if (core_id == 0) {
-//     print_vector(data, M);
-//   }
-// #endif
+  // #ifdef VERBOSE
+  //   mempool_barrier(num_cores);
+  //   if (core_id == 0) {
+  //     print_vector(data, M);
+  //   }
+  // #endif
 
   mempool_barrier(num_cores);
   int32_t error = 0;
@@ -156,7 +156,8 @@ int main() {
     mempool_wait(4 * num_cores);
     cycles = mempool_get_timer();
     mempool_start_benchmark();
-    error = reduce_L1_wrapper(data, shape, axes, rank, num_axes, 1, noop_with_empty_axes);
+    error = reduce_L1_wrapper(data, shape, axes, rank, num_axes, 1,
+                              noop_with_empty_axes);
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
 
@@ -165,8 +166,7 @@ int main() {
     printf("Duration: %d\n", cycles);
     // print_vector(reduced, OUT_SIZE);
 #endif
-  }
-  else {
+  } else {
     while (1) {
       mempool_wfi();
       run_task(core_id);

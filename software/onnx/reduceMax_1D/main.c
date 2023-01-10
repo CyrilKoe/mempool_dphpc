@@ -47,7 +47,7 @@ void init_vector(int32_t *vector, uint32_t num_elements, int32_t a, int32_t b,
                  uint32_t core_id, uint32_t num_cores) {
   // Parallelize over rows
   for (uint32_t i = core_id; i < num_elements; i += num_cores) {
-    vector[i] = - a * (int32_t)i - b;
+    vector[i] = -a * (int32_t)i - b;
   }
 }
 
@@ -64,22 +64,22 @@ int32_t reduce_max_sequential(int32_t const *__restrict__ A,
   uint32_t i;
   int32_t reduced = MIN32;
   for (i = 0; i < num_elements; i++) {
-    if (A[i]>reduced)
+    if (A[i] > reduced)
       reduced = A[i];
   }
   return reduced;
 }
 
 int32_t reduce_max_parallel1(int32_t const *__restrict__ A,
-                              uint32_t num_elements, uint32_t id,
-                              uint32_t numThreads) {
+                             uint32_t num_elements, uint32_t id,
+                             uint32_t numThreads) {
 
   Partial_maxs[id] = MIN32;
   int32_t reduced = MIN32;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      if (A[i*4+j]>Partial_maxs[id])
-        Partial_maxs[id] = A[i*4+j];
+      if (A[i * 4 + j] > Partial_maxs[id])
+        Partial_maxs[id] = A[i * 4 + j];
     }
   }
   mempool_barrier(numThreads);
@@ -95,8 +95,8 @@ int32_t reduce_max_parallel1(int32_t const *__restrict__ A,
 
 // does not make sense to me since memory layout is not considered
 int32_t reduce_max_parallel2(int32_t const *__restrict__ A,
-                              uint32_t num_elements, uint32_t id,
-                              uint32_t numThreads) {
+                             uint32_t num_elements, uint32_t id,
+                             uint32_t numThreads) {
 
   Partial_maxs[id] = MIN32;
   int32_t reduced = MIN32;
@@ -117,15 +117,15 @@ int32_t reduce_max_parallel2(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_max_parallel3(int32_t const *__restrict__ A,
-                              uint32_t num_elements, uint32_t id,
-                              uint32_t numThreads) {
+                             uint32_t num_elements, uint32_t id,
+                             uint32_t numThreads) {
 
   Partial_maxs[id] = MIN32;
   int32_t reduced = MIN32;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      if (A[i*4+j]>Partial_maxs[id])
-        Partial_maxs[id] = A[i*4+j];
+      if (A[i * 4 + j] > Partial_maxs[id])
+        Partial_maxs[id] = A[i * 4 + j];
     }
   }
   mempool_barrier(numThreads);
@@ -169,15 +169,15 @@ int32_t reduce_max_parallel3(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_max_parallel4(int32_t const *__restrict__ A,
-                              uint32_t num_elements, uint32_t id,
-                              uint32_t numThreads) {
+                             uint32_t num_elements, uint32_t id,
+                             uint32_t numThreads) {
 
   Partial_maxs[id] = MIN32;
   int32_t reduced = MIN32;
   for (uint32_t i = id; i < num_elements; i += numThreads) {
     for (uint32_t j = 0; j < 4; ++j) {
-      if (A[i*4+j]>Partial_maxs[id])
-        Partial_maxs[id] = A[i*4+j];
+      if (A[i * 4 + j] > Partial_maxs[id])
+        Partial_maxs[id] = A[i * 4 + j];
     }
   }
   mempool_barrier(numThreads);
@@ -305,25 +305,25 @@ int32_t reduce_max_parallel4(int32_t const *__restrict__ A,
 }
 
 int32_t reduce_max_omp_parallel_critical(int32_t const *__restrict__ A,
-                                    uint32_t num_elements,
-                                    uint32_t numThreads) {
+                                         uint32_t num_elements,
+                                         uint32_t numThreads) {
 
   reduced_atomic = MIN32;
 #pragma omp parallel num_threads(numThreads)
-{
-  int32_t partial_max = MIN32;
-  for (uint32_t i = omp_get_thread_num(); i < num_elements; i += numThreads) {
-    for (uint32_t j = 0; j < 4; ++j) {
-      if (A[i*4+j] > partial_max)
-        partial_max = A[i*4+j];
+  {
+    int32_t partial_max = MIN32;
+    for (uint32_t i = omp_get_thread_num(); i < num_elements; i += numThreads) {
+      for (uint32_t j = 0; j < 4; ++j) {
+        if (A[i * 4 + j] > partial_max)
+          partial_max = A[i * 4 + j];
+      }
+    }
+#pragma omp critical
+    {
+      if (partial_max > reduced_atomic)
+        reduced_atomic = partial_max;
     }
   }
-#pragma omp critical 
-{
-  if (partial_max > reduced_atomic)
-    reduced_atomic = partial_max;
-}
-}
   return reduced_atomic;
 }
 
@@ -387,8 +387,7 @@ int main() {
     result = reduce_max_sequential(a, M);
     mempool_stop_benchmark();
     cycles = mempool_get_timer() - cycles;
-  }
-  else {
+  } else {
     mempool_wait(4 * num_cores);
     mempool_start_benchmark();
     mempool_stop_benchmark();
@@ -405,7 +404,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_max_parallel1(a, M/4, core_id, num_cores);
+  result = reduce_max_parallel1(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -435,7 +434,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_max_parallel3(a, M/4, core_id, num_cores);
+  result = reduce_max_parallel3(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
@@ -450,7 +449,7 @@ int main() {
 
   cycles = mempool_get_timer();
   mempool_start_benchmark();
-  result = reduce_max_parallel4(a, M/4, core_id, num_cores);
+  result = reduce_max_parallel4(a, M / 4, core_id, num_cores);
   mempool_stop_benchmark();
   cycles = mempool_get_timer() - cycles;
 
