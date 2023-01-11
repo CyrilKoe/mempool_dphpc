@@ -1,5 +1,6 @@
 import os
 import random
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import List
@@ -114,6 +115,7 @@ def generate_seeds(ns, ks, precision, nseeds, iterations):
     
     for n in ns:
         for k in ks:
+            print('Measuring insertions for N=%d, K=%d' % (n, k))
             insertions = measure_insertions(iterations, n, k, precision)
             mean = np.mean(insertions)
             seeds = []
@@ -127,7 +129,6 @@ def generate_seeds(ns, ks, precision, nseeds, iterations):
             seeds = seeds[:nseeds]
             filename = generate_seeds_filename(n, k)
             np.save(os.path.join(SEEDS_DIR, filename), np.array(seeds).astype(int))
-
 
 def generate_header(seed : int, n, k, precision, signed, filepath):
     '''
@@ -165,10 +166,10 @@ def generate_headers(ns, ks, precision, signed, directory):
 ## -> worst case : N-K updates
 ## -> expectation: unknown, measure statistically
 
-ITERATIONS = 100000
-NSEEDS = 10
-PRECISION = 32
-SIGNED = False
+# ITERATIONS = 10
+# NSEEDS = 10
+# PRECISION = 32
+# SIGNED = False
 
 def make_dirs(outdir):
     if not os.path.exists(SEEDS_DIR):
@@ -198,9 +199,9 @@ def make_dirs(outdir):
 #############################################################################################
 
 
-if __name__ == '__main__':
+def main(action, iterations, nseeds, precision, signed):
     # name output directory according to data type (precision + sign)
-    outdir = os.path.join(OUTPUT_DIR, '%sint%d' % ('' if SIGNED else 'u', PRECISION))
+    outdir = os.path.join(OUTPUT_DIR, '%sint%d' % ('' if signed else 'u', precision))
     make_dirs(outdir) # create all directories
     def ki(n):
         return n * 1024
@@ -212,8 +213,24 @@ if __name__ == '__main__':
     # 1. Compute and store the representative random seeds for all Ns and Ks
     #    WARNING: This function can take a long time to execute for large number
     #             of iterations. This can be reduced at the cost of lower precision.
-    generate_seeds(ns, ks, PRECISION, NSEEDS, ITERATIONS)
+    if action != 'genheaders':
+        print('Generating seeds...')
+        # generate_seeds(ns, ks, precision, nseeds, iterations)
 
     # 2. Generate the header files in the <outdir> directory
-    generate_headers(ns, ks, PRECISION, SIGNED, outdir)
+    if action != 'genseeds':
+        print('Generating headers...')
+        # generate_headers(ns, ks, precision, signed, outdir)
+
+    print('Done!\nThe generated header files can be found in %s' % outdir)
             
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Generate representative random data for Top-K')
+    parser.add_argument('action', type=str, choices={'genseeds', 'genheaders', 'all'})
+    parser.add_argument('--iterations', '-i', type=int , default=10000, required=False)
+    parser.add_argument('--precision' , '-p', type=int , default=   32, required=False)
+    parser.add_argument('--signed'    , '-s', type=bool, default=False, required=False)
+    parser.add_argument('--nseeds'    , '-n', type=int , default=   10, required=False)
+    args = parser.parse_args()
+    main(args.action, args.iterations, args.nseeds, args.precision, args.signed)
