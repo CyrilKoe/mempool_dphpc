@@ -25,6 +25,27 @@ make NUM_CORES_BENCH=16 argmax_impl
 # More infos about running are available in the hardware README
 ```
 
+# Reduce
+
+Following reduction operators are supported:
+- ReduceL1
+- ReduceMax
+- ReduceMin
+- ReduceProd
+- ReduceSum
+- ReduceSumSquare
+
+All operators have one generic version for input tensors up to rank 4 and one optimized version (in folder *\*_1D*) for reduction over all axes. Additionally, *ReduceSum* has an 8-bit SIMD version in folder *ReduceSum_8b*.
+
+## Compile and run for mempool
+```bash
+# Set number of cores and input size in KiB
+make NUM_CORES_BENCH=16 IS=512 reduceSum
+
+# Run hardware simulation
+(cd ../../hardware/ && app=onnx/reduceSum make simcvcs)
+```
+
 # Top-K
 
 ## Setup
