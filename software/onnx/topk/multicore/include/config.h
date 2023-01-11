@@ -1,0 +1,12 @@
+#ifndef DPHPC_CONFIG_H
+#define DPHPC_CONFIG_H
+
+///////////////////////////////////////////////////////////////////
+///////////////////// MEMPOOL CONFIGURATION ///////////////////////
+///////////////////////////////////////////////////////////////////
+
+#define ACTIVE_CORES 256 /* How many cores to use to execute the Top-K algorithm */
+#define ACTIVE_CORE_RANGE (256 / ACTIVE_CORES)
+#define CORES_PER_TILE 4
+
+#endif
