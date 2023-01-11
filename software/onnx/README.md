@@ -90,6 +90,7 @@ make trace
 
 - argmax_base : sequential argmax
 - argmax_impl : optimized argmax
+- conv1d_8b : set of optimized conv1d kernels
 - topk : single- and multi-core optimized top-k
 
 # Add your new operator
