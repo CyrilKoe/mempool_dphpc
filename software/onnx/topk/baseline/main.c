@@ -37,7 +37,7 @@ int main(){
     num_cores = mempool_get_core_count();
     tile_id   = core_id / CORES_PER_TILE;
 
-    mempool_init(core_id, num_cores);
+    mempool_init(core_id);
     mempool_barrier_init(core_id);
 
     mempool_barrier(num_cores);
