@@ -29,6 +29,7 @@ make NUM_CORES_BENCH=16 argmax_impl
 
 - argmax_base : sequential argmax
 - argmax_impl : optimized argmax
+- conv1d_8b : set of optimized conv1d kernels
 
 # Add your new operator
 Add your `main.c` in a folder here (ex `argmax_base`, `argmax_impl`), please start with `operator_`.
