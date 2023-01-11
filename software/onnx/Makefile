@@ -24,7 +24,8 @@ include $(RUNTIME_DIR)/runtime.mk
 
 # Create convenience target
 APP_PREFIX := onnx/
-APPS := $(patsubst $(APPS_DIR)/%/main.c,%,$(shell find $(APPS_DIR) -name "main.c"))
+# /!\ FIXME /!\ Apps are searched in maxdepth 2 to avoid compiling topk yet
+APPS := $(patsubst $(APPS_DIR)/%/main.c,%,$(shell find $(APPS_DIR) -maxdepth 2 -name "main.c"))
 BINARIES := $(addprefix $(BIN_DIR)/$(APP_PREFIX),$(APPS))
 
 # Make all applications

@@ -193,7 +193,7 @@ int main() {
 #endif
   }
 
-#if ~IS_MEMPOOL
+#if !IS_MEMPOOL
   print_benchmark();
 #endif
 
