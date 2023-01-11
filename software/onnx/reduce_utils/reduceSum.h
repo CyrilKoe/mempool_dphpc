@@ -4,8 +4,13 @@
 
 // Author: Gamze Islamoglu, ETH Zurich
 
+#if IS_MEMPOOL
 #include "encoding.h"
 #include "printf.h"
+#else
+#include "no_mempool.h"
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -13,7 +18,7 @@ int32_t reduce_Sum_omp_static(int32_t const *__restrict__ A,
                               uint32_t num_elements) {
   uint32_t i;
   int32_t reduced = 0;
-#pragma omp parallel for reduction(+ : reduced)
+#pragma omp parallel for reduction(+ : reduced) num_threads(NUM_CORES_BENCH)
   for (i = 0; i < num_elements; i++) {
     reduced += A[i];
   }

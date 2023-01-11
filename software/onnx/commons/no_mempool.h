@@ -8,6 +8,8 @@
 
 #include <stdlib.h>
 #include <time.h>
+#include <stdio.h>
+#include <unistd.h>
 
 
 // Linked list to measure regions's cpu time
@@ -23,6 +25,12 @@ measure_t *measure_list = NULL;
 typedef struct {
   char nothing;
 } alloc_t;
+
+typedef clock_t mempool_timer_t;
+
+static inline mempool_timer_t mempool_get_timer() { return clock(); }
+static inline void mempool_wait(uint32_t cycles) { usleep(cycles); }
+
 
 void domain_free(alloc_t *alloc, void *const ptr) {
     free(ptr);
@@ -75,8 +83,8 @@ void mempool_stop_benchmark() {
 void print_benchmark() {
     measure_t *tmp = measure_list;
     unsigned int i = 0;
-    while(tmp && tmp->next) {
-        printf("Section %u : %lu us (%lu -> %lu)\n", i++, tmp->end - tmp->start, tmp->start, tmp->end);
+    while(tmp) {
+        printf("Section %u : %lu cycles (%lu -> %lu)\n", i++, tmp->end - tmp->start, tmp->start, tmp->end);
         tmp = tmp->next;
     }
     printf("Cycles per sec %lu\n", CLOCKS_PER_SEC);
