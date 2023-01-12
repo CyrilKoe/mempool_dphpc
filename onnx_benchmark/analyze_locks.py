@@ -4,12 +4,29 @@ import re
 import sys
 import pandas as pd
 
+args = {'VERBOSE':0}
+for arg in sys.argv:
+    if '=' in arg:
+        argname, value = arg.split('=')
+        if argname not in args:
+            print("Unknown arg",argname)
+            sys.exit(1)
+        args[argname] = int(value)
+
 result_path = "../hardware/results/"
 
 def split_line(line):
     cycle_0, cycle_1, addr, instr, opa, opb = [a for a in line.split(' ') if a != ""][0:6]
     return cycle_0, cycle_1, addr, instr, opa, opb
 
+todo = 0
+done = 0
+for (dirpath, dirnames, filenames) in walk(result_path):
+    for filename in filenames:
+        if "trace_hart_" in filename:
+            todo+=1
+
+print(todo,"files todo")
 for (dirpath, dirnames, filenames) in walk(result_path):
     csv_string = "section,"
     to_add = {}
@@ -20,6 +37,7 @@ for (dirpath, dirnames, filenames) in walk(result_path):
                 col_idx=0
                 with open(dirpath+'/results.csv', "r") as fp:
                     if "cs_retry" in fp.readline():
+                        done+=1
                         continue
                 to_add[dirpath+'/results.csv'] = cols_to_add
                 
@@ -63,13 +81,17 @@ for (dirpath, dirnames, filenames) in walk(result_path):
                 
                 print_output = buffer.getvalue()
                 sys.stdout = sys.__stdout__
-                if print_output:
-                    print(filename)
+                if print_output and args['VERBOSE']:
+                    print("\n",filename)
                     print(print_output)
+                done += 1
+                print("\r",done,"/",todo,end="")
     for filename in to_add:
         df_add = pd.DataFrame.from_dict(to_add[filename], orient='index')
         df = pd.read_csv(filename)
         # If only core and sections are in common
         if len(df.columns.intersection(df_add.columns)) == 2:
-            new_df = df.merge(df_add, on=['core', 'section'])
-            new_df.to_csv(filename)
+            df = df.merge(df_add, on=['core', 'section'])
+        # print("\r",filename)
+        df.to_csv(filename, index=False)
+print("Done.")
