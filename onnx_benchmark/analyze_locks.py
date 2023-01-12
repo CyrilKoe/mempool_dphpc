@@ -2,34 +2,61 @@ from io import StringIO
 from os import walk
 import re
 import sys
+import pandas as pd
 
-result_path = "/scratch/cykoenig/development/mempool_dphpc/hardware/results/"
+result_path = "../hardware/results/"
 
 def split_line(line):
-    cycle_0, cycle_1, addr, instr = [a for a in line.split(' ') if a != ""][0:4]
-    return cycle_0, cycle_1, addr, instr
+    cycle_0, cycle_1, addr, instr, opa, opb = [a for a in line.split(' ') if a != ""][0:6]
+    return cycle_0, cycle_1, addr, instr, opa, opb
 
 for (dirpath, dirnames, filenames) in walk(result_path):
+    csv_string = "section,"
+    to_add = {}
     for filename in filenames:
         if "trace_hart_" in filename:
+            if dirpath+'/results.csv' not in to_add:
+                cols_to_add = {}
+                col_idx=0
+                with open(dirpath+'/results.csv', "r") as fp:
+                    if "cs_retry" in fp.readline():
+                        continue
+                to_add[dirpath+'/results.csv'] = cols_to_add
+                
             with open(dirpath+"/"+filename, "r") as fp:
                 buffer = StringIO()
                 sys.stdout = buffer
                 
                 cs_cycle_0, cs_cycle_1, cs_addr, cs_instr = -1, -1, -1, -1
                 retry = 0
+                section = 0
+                core = int(filename[-10:-6],16)
+                
+                cols_to_add[col_idx] = {"core": core, "section":section, "cs_retry":[], "cs_duration":[]}
                 
                 for line in fp.readlines():
                     if "amoor" in line and cs_cycle_0 == -1:
-                        cs_cycle_0, cs_cycle_1, cs_addr, cs_instr = split_line(line)
-                        print("->", cs_addr, cs_instr, end="")
+                        cs_cycle_0, cs_cycle_1, cs_addr, cs_instr, _, _ = split_line(line)
+                        print("("+str(section)+")","->", cs_addr, cs_instr, end="")
+                        
                     elif "amoor" in line and cs_cycle_0 != -1:
                         retry += 1
-                    if "amoswap.w" in line and cs_cycle_0 != -1:
-                        cycle_0, cycle_1, addr, instr = split_line(line)
-                        print(" ->", addr, instr, "->", int(cycle_1)-int(cs_cycle_1), "("+str(retry)+")")
+                        
+                    elif "csrwi" in line:
+                        cycle_0, cycle_1, addr, instr, csr, value = split_line(line)
+                        if csr == "trace,":
+                            section = section + 1
+                            col_idx+=1
+                            cols_to_add[col_idx] = {"core": core, "section":section, "cs_retry":[], "cs_duration":[]}
+                            
+                    elif "amoswap.w" in line and cs_cycle_0 != -1:
+                        cycle_0, cycle_1, addr, instr, _, _ = split_line(line)
+                        print("->", addr, instr, "->", int(cycle_1)-int(cs_cycle_1), "("+str(retry)+")")
+                        cols_to_add[col_idx]["cs_retry"].append(retry)
+                        cols_to_add[col_idx]["cs_duration"].append(int(cycle_1)-int(cs_cycle_1))
                         cs_cycle_0 = -1
                         retry = 0
+
                 if(cs_cycle_0 != -1):
                     # In case an amoor is not followed by an amoswap
                     print("")
@@ -39,3 +66,10 @@ for (dirpath, dirnames, filenames) in walk(result_path):
                 if print_output:
                     print(filename)
                     print(print_output)
+    for filename in to_add:
+        df_add = pd.DataFrame.from_dict(to_add[filename], orient='index')
+        df = pd.read_csv(filename)
+        # If only core and sections are in common
+        if len(df.columns.intersection(df_add.columns)) == 2:
+            new_df = df.merge(df_add, on=['core', 'section'])
+            new_df.to_csv(filename)
