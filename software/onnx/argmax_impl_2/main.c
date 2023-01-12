@@ -205,6 +205,7 @@ void argmax_int32(uint32_t data_len, int32_t *data, int32_t *global_max,
     int32_t *local_vector = NULL;
     // Initialize local intermediary results
     uint32_t local_indexes_len = 0;
+    index_t  first_local_indexes = {-1, NULL};
     index_t *local_indexes = NULL;
     int32_t local_max = DEFAULT_MAX_VALUE;
     // Initialize global ptr/copies to/of local intermeriary results
@@ -254,17 +255,7 @@ void argmax_int32(uint32_t data_len, int32_t *data, int32_t *global_max,
         // Free your local index list
         do_lock(tile_lock_ptr);
         // Todo do not free all the time
-        free_all(tile_alloc, local_indexes);
-        // Start a new index list in the tile
-        local_indexes = (index_t *)domain_malloc(tile_alloc, sizeof(index_t));
-        // If no more space in the tile then anywhere in L1
-        if (!local_indexes) {
-          do_lock(&malloc_lock);
-          local_indexes = (index_t *)simple_malloc(sizeof(index_t));
-          if (!local_indexes)
-            printf("ERROR\n");
-          do_unlock(&malloc_lock);
-        }
+        free_all(tile_alloc, local_indexes->next);
         do_unlock(tile_lock_ptr);
 
         // Save this new max's index
