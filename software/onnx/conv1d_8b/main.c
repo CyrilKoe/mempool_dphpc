@@ -7,26 +7,33 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "encoding.h"
-#include "printf.h"
-#include "runtime.h"
-#include "synchronization.h"
-#include "conv1d_i8.h"
+#define NO_MEMPOOL
+
+#ifdef NO_MEMPOOL
+  #include "encoding.h"
+  #include "printf.h"
+  #include "runtime.h"
+  #include "synchronization.h"
+  #include "conv1d_i8.h"
+#else
+  #include "no_mempool.h"
+#endif
+
 
 // Default Input Parameters for Strong Scaling study
 #define INPUT_LENGTH 1024
 #define INPUT_CHANNELS 1
 #define KERNEL_LENGTH 16
 
-#define OUTPUT_LENGTH 256
+#define OUTPUT_LENGTH 256 
 #define OUTPUT_CHANNELS 1
 
 #define PAD_BEGIN 8
 #define PAD_END 8
 #define STRIDES 4
 
-#define DATA_SCALING_BENCHMARK
-// #define STRONG_SCALING_BENCHMARK
+// #define DATA_SCALING_BENCHMARK
+#define STRONG_SCALING_BENCHMARK
 
 volatile int8_t in[PAD_BEGIN + INPUT_LENGTH + PAD_END] __attribute__((section(".l1_prio"))); // interleaved
 volatile int32_t out[OUTPUT_LENGTH] __attribute__((section(".l1_prio")));
@@ -108,84 +115,84 @@ int main() {
   mempool_barrier(num_cores);
 
 
-  if(core_id == 0){
-    printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[1]);
-    for(int i = 0; i < OUTPUT_LENGTH; i++) {
-      out[i] = 0;
-    }    
-  }
-  mempool_barrier(num_cores);
-  if (core_id < numCoreBenchmark[1]) {
-    mempool_start_benchmark();
-    conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
-                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[1]);
-    mempool_stop_benchmark();
-  }
-  mempool_barrier(num_cores);
+  // if(core_id == 0){
+  //   printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[1]);
+  //   for(int i = 0; i < OUTPUT_LENGTH; i++) {
+  //     out[i] = 0;
+  //   }    
+  // }
+  // mempool_barrier(num_cores);
+  // if (core_id < numCoreBenchmark[1]) {
+  //   mempool_start_benchmark();
+  //   conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
+  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[1]);
+  //   mempool_stop_benchmark();
+  // }
+  // mempool_barrier(num_cores);
 
 
-  if(core_id == 0){
-    printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[2]);
-    for(int i = 0; i < OUTPUT_LENGTH; i++) {
-      out[i] = 0;
-    }    
-  }
-  mempool_barrier(num_cores);
-  if (core_id < numCoreBenchmark[2]) {
-    mempool_start_benchmark();
-    conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
-                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[2]);
-    mempool_stop_benchmark();
-  }
-  mempool_barrier(num_cores);
+  // if(core_id == 0){
+  //   printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[2]);
+  //   for(int i = 0; i < OUTPUT_LENGTH; i++) {
+  //     out[i] = 0;
+  //   }    
+  // }
+  // mempool_barrier(num_cores);
+  // if (core_id < numCoreBenchmark[2]) {
+  //   mempool_start_benchmark();
+  //   conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
+  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[2]);
+  //   mempool_stop_benchmark();
+  // }
+  // mempool_barrier(num_cores);
 
 
-  if(core_id == 0){
-    printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[3]);
-    for(int i = 0; i < OUTPUT_LENGTH; i++) {
-      out[i] = 0;
-    }    
-  }
-  mempool_barrier(num_cores);
-  if (core_id < numCoreBenchmark[3]) {
-    mempool_start_benchmark();
-    conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
-                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[3]);
-    mempool_stop_benchmark();
-  }
-  mempool_barrier(num_cores);
+  // if(core_id == 0){
+  //   printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[3]);
+  //   for(int i = 0; i < OUTPUT_LENGTH; i++) {
+  //     out[i] = 0;
+  //   }    
+  // }
+  // mempool_barrier(num_cores);
+  // if (core_id < numCoreBenchmark[3]) {
+  //   mempool_start_benchmark();
+  //   conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
+  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[3]);
+  //   mempool_stop_benchmark();
+  // }
+  // mempool_barrier(num_cores);
 
 
-  if(core_id == 0){
-    printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[4]);
-    for(int i = 0; i < OUTPUT_LENGTH; i++) {
-      out[i] = 0;
-    }    
-  }
-  mempool_barrier(num_cores);
-  if (core_id < numCoreBenchmark[4]) {
-    mempool_start_benchmark();
-    conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
-                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[4]);
-    mempool_stop_benchmark();
-  }
-  mempool_barrier(num_cores);
+  // if(core_id == 0){
+  //   printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[4]);
+  //   for(int i = 0; i < OUTPUT_LENGTH; i++) {
+  //     out[i] = 0;
+  //   }    
+  // }
+  // mempool_barrier(num_cores);
+  // if (core_id < numCoreBenchmark[4]) {
+  //   mempool_start_benchmark();
+  //   conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
+  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[4]);
+  //   mempool_stop_benchmark();
+  // }
+  // mempool_barrier(num_cores);
 
 
-  if(core_id == 0){
-    printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[5]);
-    for(int i = 0; i < OUTPUT_LENGTH; i++) {
-      out[i] = 0;
-    }    
-  }
-  mempool_barrier(num_cores);
-  if (core_id < numCoreBenchmark[5]) {
-    mempool_start_benchmark();
-    conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
-                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[5]);
-    mempool_stop_benchmark();
-  }
-  mempool_barrier(num_cores);
+  // if(core_id == 0){
+  //   printf("Start v1 kernel %u core benchmark\n", numCoreBenchmark[5]);
+  //   for(int i = 0; i < OUTPUT_LENGTH; i++) {
+  //     out[i] = 0;
+  //   }    
+  // }
+  // mempool_barrier(num_cores);
+  // if (core_id < numCoreBenchmark[5]) {
+  //   mempool_start_benchmark();
+  //   conv1d_i8_v3(in, out, kernel, INPUT_LENGTH, KERNEL_LENGTH,
+  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreBenchmark[5]);
+  //   mempool_stop_benchmark();
+  // }
+  // mempool_barrier(num_cores);
   #endif
 
 
@@ -224,160 +231,160 @@ int main() {
   mempool_barrier(num_cores);
 
 
-  // if(core_id == 0){
-  //   printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[1]);
-  //   // Initialize Input
-  //   for(int i = 0; i < PAD_BEGIN; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN + inputLengthBenchmark[1]; i < PAD_BEGIN + inputLengthBenchmark[1] + PAD_END; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[1]; i++) {
-  //     in[i] = (int8_t)i % 42;
-  //   }
-  //   for(int i = 0; i < outputLengthBenchmark[1]; i++) {
-  //     out[i] = 0;
-  //   }    
-  // }
-  // mempool_barrier(num_cores);
-  // if (core_id < numCoreDataBenchmark) {
-  //   mempool_start_benchmark();
-  //   conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[1], KERNEL_LENGTH,
-  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
-  //   mempool_stop_benchmark();
-  // }
-  // mempool_barrier(num_cores);
+  if(core_id == 0){
+    printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[1]);
+    // Initialize Input
+    for(int i = 0; i < PAD_BEGIN; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN + inputLengthBenchmark[1]; i < PAD_BEGIN + inputLengthBenchmark[1] + PAD_END; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[1]; i++) {
+      in[i] = (int8_t)i % 42;
+    }
+    for(int i = 0; i < outputLengthBenchmark[1]; i++) {
+      out[i] = 0;
+    }    
+  }
+  mempool_barrier(num_cores);
+  if (core_id < numCoreDataBenchmark) {
+    mempool_start_benchmark();
+    conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[1], KERNEL_LENGTH,
+                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
+    mempool_stop_benchmark();
+  }
+  mempool_barrier(num_cores);
 
 
-  // if(core_id == 0){
-  //   printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[2]);
-  //   // Initialize Input
-  //   for(int i = 0; i < PAD_BEGIN; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN + inputLengthBenchmark[2]; i < PAD_BEGIN + inputLengthBenchmark[2] + PAD_END; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[2]; i++) {
-  //     in[i] = (int8_t)i % 42;
-  //   }
-  //   for(int i = 0; i < outputLengthBenchmark[2]; i++) {
-  //     out[i] = 0;
-  //   }    
-  // }
-  // mempool_barrier(num_cores);
-  // if (core_id < numCoreDataBenchmark) {
-  //   mempool_start_benchmark();
-  //   conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[2], KERNEL_LENGTH,
-  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
-  //   mempool_stop_benchmark();
-  // }
-  // mempool_barrier(num_cores);
+  if(core_id == 0){
+    printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[2]);
+    // Initialize Input
+    for(int i = 0; i < PAD_BEGIN; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN + inputLengthBenchmark[2]; i < PAD_BEGIN + inputLengthBenchmark[2] + PAD_END; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[2]; i++) {
+      in[i] = (int8_t)i % 42;
+    }
+    for(int i = 0; i < outputLengthBenchmark[2]; i++) {
+      out[i] = 0;
+    }    
+  }
+  mempool_barrier(num_cores);
+  if (core_id < numCoreDataBenchmark) {
+    mempool_start_benchmark();
+    conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[2], KERNEL_LENGTH,
+                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
+    mempool_stop_benchmark();
+  }
+  mempool_barrier(num_cores);
   
 
-  // if(core_id == 0){
-  //   printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[3]);
-  //   // Initialize Input
-  //   for(int i = 0; i < PAD_BEGIN; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN + inputLengthBenchmark[3]; i < PAD_BEGIN + inputLengthBenchmark[3] + PAD_END; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[3]; i++) {
-  //     in[i] = (int8_t)i % 42;
-  //   }
-  //   for(int i = 0; i < outputLengthBenchmark[3]; i++) {
-  //     out[i] = 0;
-  //   }    
-  // }
-  // mempool_barrier(num_cores);
-  // if (core_id < numCoreDataBenchmark) {
-  //   mempool_start_benchmark();
-  //   conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[3], KERNEL_LENGTH,
-  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
-  //   mempool_stop_benchmark();
-  // }
-  // mempool_barrier(num_cores);
+  if(core_id == 0){
+    printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[3]);
+    // Initialize Input
+    for(int i = 0; i < PAD_BEGIN; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN + inputLengthBenchmark[3]; i < PAD_BEGIN + inputLengthBenchmark[3] + PAD_END; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[3]; i++) {
+      in[i] = (int8_t)i % 42;
+    }
+    for(int i = 0; i < outputLengthBenchmark[3]; i++) {
+      out[i] = 0;
+    }    
+  }
+  mempool_barrier(num_cores);
+  if (core_id < numCoreDataBenchmark) {
+    mempool_start_benchmark();
+    conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[3], KERNEL_LENGTH,
+                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
+    mempool_stop_benchmark();
+  }
+  mempool_barrier(num_cores);
 
 
-  // if(core_id == 0){
-  //   printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[4]);
-  //   // Initialize Input
-  //   for(int i = 0; i < PAD_BEGIN; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN + inputLengthBenchmark[4]; i < PAD_BEGIN + inputLengthBenchmark[4] + PAD_END; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[4]; i++) {
-  //     in[i] = (int8_t)i % 42;
-  //   }
-  //   for(int i = 0; i < outputLengthBenchmark[4]; i++) {
-  //     out[i] = 0;
-  //   }    
-  // }
-  // mempool_barrier(num_cores);
-  // if (core_id < numCoreDataBenchmark) {
-  //   mempool_start_benchmark();
-  //   conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[4], KERNEL_LENGTH,
-  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
-  //   mempool_stop_benchmark();
-  // }
-  // mempool_barrier(num_cores);
+  if(core_id == 0){
+    printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[4]);
+    // Initialize Input
+    for(int i = 0; i < PAD_BEGIN; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN + inputLengthBenchmark[4]; i < PAD_BEGIN + inputLengthBenchmark[4] + PAD_END; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[4]; i++) {
+      in[i] = (int8_t)i % 42;
+    }
+    for(int i = 0; i < outputLengthBenchmark[4]; i++) {
+      out[i] = 0;
+    }    
+  }
+  mempool_barrier(num_cores);
+  if (core_id < numCoreDataBenchmark) {
+    mempool_start_benchmark();
+    conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[4], KERNEL_LENGTH,
+                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
+    mempool_stop_benchmark();
+  }
+  mempool_barrier(num_cores);
 
 
-  // if(core_id == 0){
-  //   printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[5]);
-  //   // Initialize Input
-  //   for(int i = 0; i < PAD_BEGIN; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN + inputLengthBenchmark[5]; i < PAD_BEGIN + inputLengthBenchmark[5] + PAD_END; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[5]; i++) {
-  //     in[i] = (int8_t)i % 42;
-  //   }
-  //   for(int i = 0; i < outputLengthBenchmark[5]; i++) {
-  //     out[i] = 0;
-  //   }    
-  // }
-  // mempool_barrier(num_cores);
-  // if (core_id < numCoreDataBenchmark) {
-  //   mempool_start_benchmark();
-  //   conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[5], KERNEL_LENGTH,
-  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
-  //   mempool_stop_benchmark();
-  // }
-  // mempool_barrier(num_cores);
+  if(core_id == 0){
+    printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[5]);
+    // Initialize Input
+    for(int i = 0; i < PAD_BEGIN; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN + inputLengthBenchmark[5]; i < PAD_BEGIN + inputLengthBenchmark[5] + PAD_END; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[5]; i++) {
+      in[i] = (int8_t)i % 42;
+    }
+    for(int i = 0; i < outputLengthBenchmark[5]; i++) {
+      out[i] = 0;
+    }    
+  }
+  mempool_barrier(num_cores);
+  if (core_id < numCoreDataBenchmark) {
+    mempool_start_benchmark();
+    conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[5], KERNEL_LENGTH,
+                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
+    mempool_stop_benchmark();
+  }
+  mempool_barrier(num_cores);
 
 
-  // if(core_id == 0){
-  //   printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[6]);
-  //   // Initialize Input
-  //   for(int i = 0; i < PAD_BEGIN; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN + inputLengthBenchmark[6]; i < PAD_BEGIN + inputLengthBenchmark[6] + PAD_END; i++) {
-  //     in[i] = 0;
-  //   }
-  //   for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[6]; i++) {
-  //     in[i] = (int8_t)i % 42;
-  //   }
-  //   for(int i = 0; i < outputLengthBenchmark[6]; i++) {
-  //     out[i] = 0;
-  //   }    
-  // }
-  // mempool_barrier(num_cores);
-  // if (core_id < numCoreDataBenchmark) {
-  //   mempool_start_benchmark();
-  //   conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[6], KERNEL_LENGTH,
-  //                PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
-  //   mempool_stop_benchmark();
-  // }
-  // mempool_barrier(num_cores);
+  if(core_id == 0){
+    printf("Start v1 kernel %u input size benchmark\n", inputLengthBenchmark[6]);
+    // Initialize Input
+    for(int i = 0; i < PAD_BEGIN; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN + inputLengthBenchmark[6]; i < PAD_BEGIN + inputLengthBenchmark[6] + PAD_END; i++) {
+      in[i] = 0;
+    }
+    for(int i = PAD_BEGIN; i < PAD_BEGIN + inputLengthBenchmark[6]; i++) {
+      in[i] = (int8_t)i % 42;
+    }
+    for(int i = 0; i < outputLengthBenchmark[6]; i++) {
+      out[i] = 0;
+    }    
+  }
+  mempool_barrier(num_cores);
+  if (core_id < numCoreDataBenchmark) {
+    mempool_start_benchmark();
+    conv1d_i8_v3(in, out, kernel, (uint32_t)inputLengthBenchmark[6], KERNEL_LENGTH,
+                 PAD_BEGIN, PAD_END, STRIDES, core_id, numCoreDataBenchmark);
+    mempool_stop_benchmark();
+  }
+  mempool_barrier(num_cores);
   #endif
 
 
