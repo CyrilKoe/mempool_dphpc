@@ -203,7 +203,7 @@ simvcs: compile_vcs_simv
 
 simcvcs: compile_vcs_simvopt
 	cd $(buildpath) && \
-	./mempool_simvopt $(vcs_args)
+	./mempool_simvopt $(vcs_args) | tee transcript
 
 # DPIs
 .PHONY: dpivcs

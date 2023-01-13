@@ -70,13 +70,17 @@ int main() {
     int32_t global_max = -1;
     index_t *global_indexes = NULL;
     uint32_t global_indexes_len = 0;
+    mempool_timer_t cycles;
 
     printf("Benchmark %u cores and %u datas (%u per core)\n", NUM_CORES_BENCH,
            l2_data_len, (uint32_t)l2_data_len / NUM_CORES_BENCH);
     printf("Expected global max = %u\n", expected_global_max);
     printf("Expected indexes len = %u\n", expected_indexes_len);
 
+    // Call the kernel
+    cycles = mempool_get_timer();
     argmax_int32(l2_data_len, l2_data_flat, &global_max, &global_indexes);
+    cycles = mempool_get_timer() - cycles;
 
     // Get the result size
     index_t *tmp = global_indexes;
@@ -88,12 +92,14 @@ int main() {
     // Print all this
     printf("Global max = %i\n", global_max);
     printf("Global indexes len = %u\n", global_indexes_len);
+
     tmp = global_indexes;
     while (tmp) {
       // printf("-> %u ", tmp->idx);
       tmp = tmp->next;
     }
     printf("\n");
+    printf("Duration: %d\n", cycles);
 
 #if IS_MEMPOOL
   } else {
@@ -199,7 +205,9 @@ void argmax_int32(uint32_t data_len, int32_t *data, int32_t *global_max,
     int32_t *local_vector = NULL;
     // Initialize local intermediary results
     uint32_t local_indexes_len = 0;
-    index_t *local_indexes = NULL;
+    index_t first_local_indexes = {(uint32_t)-1, NULL};
+    index_t *local_indexes = &first_local_indexes,
+            *local_indexes_tail = &first_local_indexes;
     int32_t local_max = DEFAULT_MAX_VALUE;
     // Initialize global ptr/copies to/of local intermeriary results
     all_local_max[id * BANKING_FACTOR] = DEFAULT_MAX_VALUE;
@@ -247,24 +255,16 @@ void argmax_int32(uint32_t data_len, int32_t *data, int32_t *global_max,
 
         // Free your local index list
         do_lock(tile_lock_ptr);
-        // Todo do not free all the time
-        free_all(tile_alloc, local_indexes);
-        // Start a new index list in the tile
-        local_indexes = (index_t *)domain_malloc(tile_alloc, sizeof(index_t));
-        // If no more space in the tile then anywhere in L1
-        if (!local_indexes) {
-          do_lock(&malloc_lock);
-          local_indexes = (index_t *)simple_malloc(sizeof(index_t));
-          if (!local_indexes)
-            printf("ERROR\n");
-          do_unlock(&malloc_lock);
-        }
+        // We only free from the second element, because the
+        // first one is on the stack (to limit synchronization)
+        free_all(tile_alloc, local_indexes->next);
         do_unlock(tile_lock_ptr);
 
         // Save this new max's index
         local_indexes->idx = local_offset + i;
         local_indexes->next = NULL;
-
+        // Keep a tail pointer for efficient queueing
+        local_indexes_tail = local_indexes;
         local_indexes_len = 1;
 
         // We found the same maximum
@@ -285,13 +285,31 @@ void argmax_int32(uint32_t data_len, int32_t *data, int32_t *global_max,
 
         // Save this new max's index
         new_index->idx = local_offset + i;
-        // Push this new max on the top of our result list
-        new_index->next = local_indexes;
-        local_indexes = new_index;
+        new_index->next = NULL;
+        // Push this new max at the end of our result list
+        local_indexes_tail->next = new_index;
+        local_indexes_tail = new_index;
 
         local_indexes_len++;
       }
     }
+
+    // Now put the first element on stack too
+    index_t *new_index;
+    do_lock(tile_lock_ptr);
+    new_index = (index_t *)domain_malloc(tile_alloc, sizeof(index_t));
+    if (!new_index) {
+      do_lock(&malloc_lock);
+      new_index = (index_t *)simple_malloc(sizeof(index_t));
+      if (!new_index)
+        printf("ERROR\n");
+      do_unlock(&malloc_lock);
+    }
+    do_unlock(tile_lock_ptr);
+    // Replace the first element
+    new_index->idx = local_indexes->idx;
+    new_index->next = local_indexes->next;
+    local_indexes = new_index;
 
     all_local_indexes[id * BANKING_FACTOR] = local_indexes;
     all_local_max[id * BANKING_FACTOR] = local_max;

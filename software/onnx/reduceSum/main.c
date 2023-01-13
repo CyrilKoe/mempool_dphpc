@@ -5,13 +5,22 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifndef IS_MEMPOOL
+#define IS_MEMPOOL 1
+#endif
+
+#if IS_MEMPOOL
 #include "alloc.h"
 #include "encoding.h"
 #include "libgomp.h"
 #include "printf.h"
-#include "reduceSum.h"
 #include "runtime.h"
 #include "synchronization.h"
+#else
+#include "no_mempool.h"
+#endif
+
+#include "reduceSum.h"
 
 // Enable verbose printing
 #define VERBOSE
@@ -123,15 +132,20 @@ int32_t reduce_Sum_wrapper(int32_t const *__restrict__ data,
 }
 
 int main() {
+#if IS_MEMPOOL
   uint32_t core_id = mempool_get_core_id();
   uint32_t num_cores = mempool_get_core_count();
-  mempool_timer_t cycles;
-
   // Initialize synchronization variables
   mempool_barrier_init(core_id);
 
   // Initialization
   // mempool_init(core_id, num_cores);
+#else
+  uint32_t core_id = 0;
+  uint32_t num_cores = NUM_CORES_BENCH;
+#endif
+
+  mempool_timer_t cycles;
 
 #ifdef VERBOSE
   if (core_id == 0) {
@@ -149,7 +163,10 @@ int main() {
   //   }
   // #endif
 
+#if IS_MEMPOOL
   mempool_barrier(num_cores);
+#endif
+
   int32_t error = 0;
 
   if (core_id == 0) {
@@ -166,12 +183,19 @@ int main() {
     printf("Duration: %d\n", cycles);
     // print_vector(reduced, OUT_SIZE);
 #endif
+
   } else {
+#if IS_MEMPOOL
     while (1) {
       mempool_wfi();
       run_task(core_id);
     }
+#endif
   }
+
+#if !IS_MEMPOOL
+  print_benchmark();
+#endif
 
   return 0;
 }

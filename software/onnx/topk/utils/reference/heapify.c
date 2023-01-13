@@ -119,7 +119,7 @@ uint32_t *topk_largest(uint32_t *v, uint32_t n, uint32_t k){
 
 	double cycles = (double)(end - start) / CLOCKS_PER_SEC; 
 
-	printf("Execution time: %.2f\n", cycles);
+	printf("Execution time: %.6f\n", cycles);
 
 	uint32_t *vout = malloc(k * sizeof(uint32_t));
 
@@ -148,7 +148,7 @@ uint32_t *topk_smallest(uint32_t *v, uint32_t n, uint32_t k){
 
 	double cycles = (double)(end - start) / CLOCKS_PER_SEC; 
 
-	printf("Execution time: %.2f\n", cycles);
+	printf("Execution time: %.6f\n", cycles);
 
 	uint32_t *vout = malloc(k * sizeof(uint32_t));
 
@@ -162,9 +162,9 @@ int main(){
 	uint32_t *top = NULL;
 
 	if(LARGEST) {
-		top = topk_largest(v, N, K);
+		top = topk_largest(input, N, K);
 	} else {
-		top = topk_smallest(v, N, K);
+		top = topk_smallest(input, N, K);
 	}
 
     printf("Top %d elements found: [", K);
